@@ -1,0 +1,18 @@
+Entering the Python venv from prompt:
+	Open terminal within project root.
+	enter .\venv\Scripts\activate
+
+Correct VSC setup for editing:
+	Ensure Python interpreter is set to venv:
+	"F:\react-django-app\venv\Scripts\python.exe"
+
+Booting up both backend and frontend servers:
+	Separate terminals (to see errors separately):
+		Open two terminals within vsc.
+		In one, cd backend.
+			python manage.py runserver
+		In two, cd frontend.
+			npm run dev
+
+Foundation set: moving on to Django models and React components.
+		

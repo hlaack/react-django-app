@@ -1,0 +1,5 @@
+venv/ env/ .env
+
+db.sqlite3 pycache/ *.pyc *.pyo backend/core/secret_key.txt
+
+.DS_Store Thumbs.db
