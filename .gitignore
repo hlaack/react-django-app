@@ -1,5 +1,16 @@
-venv/ env/ .env
+venv/
+env/
+.env
 
-db.sqlite3 pycache/ *.pyc *.pyo backend/core/secret_key.txt
+db.sqlite3
+__pycache__/
+*.pyc
+*.pyo
+backend/core/secret_key.txt
 
-.DS_Store Thumbs.db
+node_modules/
+
+.claude/
+
+.DS_Store
+Thumbs.db
