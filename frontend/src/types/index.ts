@@ -1,0 +1,93 @@
+// TypeScript interfaces mirroring the Django REST Framework serializers in
+// backend/api/serializers.py. Keep these in sync with the backend: if a
+// serializer's `fields` change, update the matching interface here.
+
+// --- Geography & Locations ---
+
+/** A named feature attached to a region (mountain range, forest, etc.). */
+export interface GeographyOfInterest {
+  id: number;
+  name: string;
+  description: string;
+  region: number; // Region id
+}
+
+export interface City {
+  id: number;
+  name: string;
+  description: string;
+  region: number; // Region id
+}
+
+export interface Town {
+  id: number;
+  name: string;
+  description: string;
+  region: number; // Region id
+}
+
+export interface Village {
+  id: number;
+  name: string;
+  description: string;
+  region: number; // Region id
+}
+
+/**
+ * A region with its child locations nested. A single GET /api/regions/<id>/
+ * returns everything needed to plot the map for that region.
+ */
+export interface Region {
+  id: number;
+  name: string;
+  description: string;
+  cities: City[];
+  towns: Town[];
+  villages: Village[];
+  geographies: GeographyOfInterest[];
+}
+
+/**
+ * A point of interest. On the backend it attaches to any location type via a
+ * generic foreign key; the serializer flattens that into readable strings.
+ */
+export interface PointOfInterest {
+  id: number;
+  name: string;
+  description: string;
+  location_type: string; // e.g. "city", "town", "region"
+  location_name: string | null;
+}
+
+// --- Characters & Lore ---
+
+export interface Family {
+  id: number;
+  name: string;
+  description: string;
+}
+
+export interface Character {
+  id: number;
+  first_name: string;
+  last_name: string;
+  bio: string;
+  families: Family[]; // full objects, not just ids
+}
+
+// --- Auth & User features ---
+
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+}
+
+export interface UserNote {
+  id: number;
+  user: string; // username (read-only on the backend)
+  content: string;
+  page_url: string;
+  created_at: string; // ISO 8601
+  updated_at: string; // ISO 8601
+}
