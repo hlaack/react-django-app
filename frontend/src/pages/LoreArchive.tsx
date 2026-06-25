@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Users, BookOpen, AlertCircle } from 'lucide-react';
 import { useCharacters, useRegions } from '../hooks/useLore';
 import type { Character, Region } from '../types';
@@ -5,7 +6,7 @@ import type { Character, Region } from '../types';
 // --- Shared presentational helpers ---
 
 const cardClass =
-  'p-5 rounded-lg bg-white dark:bg-slate-900 border border-amber-900/10 dark:border-slate-800 shadow-sm';
+  'block p-5 rounded-lg bg-white dark:bg-slate-900 border border-amber-900/10 dark:border-slate-800 shadow-sm transition-shadow transition-colors hover:shadow-md hover:border-amber-600/40 dark:hover:border-amber-500/40';
 
 function SectionHeading({ icon: Icon, title }: { icon: typeof Users; title: string }) {
   return (
@@ -50,7 +51,7 @@ function EmptyState({ message }: { message: string }) {
 function CharacterCard({ character }: { character: Character }) {
   const fullName = `${character.first_name} ${character.last_name}`.trim();
   return (
-    <article className={cardClass}>
+    <Link to={`/lore/characters/${character.id}`} className={cardClass}>
       <h3 className="font-serif font-bold text-lg mb-1">{fullName}</h3>
       {character.families.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
@@ -69,7 +70,7 @@ function CharacterCard({ character }: { character: Character }) {
       ) : (
         <p className="text-sm text-slate-400 dark:text-slate-500 italic">No bio recorded.</p>
       )}
-    </article>
+    </Link>
   );
 }
 
@@ -77,7 +78,7 @@ function RegionCard({ region }: { region: Region }) {
   const locationCount =
     region.cities.length + region.towns.length + region.villages.length;
   return (
-    <article className={cardClass}>
+    <Link to={`/lore/regions/${region.id}`} className={cardClass}>
       <h3 className="font-serif font-bold text-lg mb-1">{region.name}</h3>
       {locationCount > 0 && (
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
@@ -90,7 +91,7 @@ function RegionCard({ region }: { region: Region }) {
       ) : (
         <p className="text-sm text-slate-400 dark:text-slate-500 italic">No description yet.</p>
       )}
-    </article>
+    </Link>
   );
 }
 

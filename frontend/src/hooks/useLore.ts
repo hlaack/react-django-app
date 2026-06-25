@@ -1,31 +1,30 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
-import type { Region, Character, Family } from '../types';
+import type {
+  Region,
+  Character,
+  Family,
+  City,
+  Town,
+  Village,
+  GeographyOfInterest,
+} from '../types';
 
-// Centralized query keys so reads and future cache invalidations stay in sync.
-// DRF list endpoints return plain arrays (no pagination configured), so the
-// fetched type is e.g. Region[], not a paginated envelope.
+// Centralized query keys for list endpoints. DRF returns plain arrays (no
+// pagination configured), so the fetched type is e.g. Region[].
 export const loreKeys = {
   regions: ['regions'] as const,
-  region: (id: number) => ['regions', id] as const,
   characters: ['characters'] as const,
   families: ['families'] as const,
 };
+
+// --- List hooks (Lore Archive) ---
 
 /** All regions, each with its nested cities/towns/villages/geographies. */
 export function useRegions() {
   return useQuery({
     queryKey: loreKeys.regions,
     queryFn: () => apiFetch<Region[]>('/regions/'),
-  });
-}
-
-/** A single region by id, with its nested locations. */
-export function useRegion(id: number | undefined) {
-  return useQuery({
-    queryKey: loreKeys.region(id as number),
-    queryFn: () => apiFetch<Region>(`/regions/${id}/`),
-    enabled: id !== undefined,
   });
 }
 
@@ -44,3 +43,24 @@ export function useFamilies() {
     queryFn: () => apiFetch<Family[]>('/families/'),
   });
 }
+
+// --- Detail hooks (individual entity pages) ---
+
+// Single-resource retrieve. `id` comes from the route as a string and the
+// query stays disabled until it's present. The DRF router exposes a retrieve
+// endpoint for every registered viewset, so no backend work is needed.
+function useDetail<T>(resource: string, id: string | undefined) {
+  return useQuery({
+    queryKey: [resource, id],
+    queryFn: () => apiFetch<T>(`/${resource}/${id}/`),
+    enabled: id !== undefined,
+  });
+}
+
+export const useCharacter = (id?: string) => useDetail<Character>('characters', id);
+export const useRegion = (id?: string) => useDetail<Region>('regions', id);
+export const useCity = (id?: string) => useDetail<City>('cities', id);
+export const useTown = (id?: string) => useDetail<Town>('towns', id);
+export const useVillage = (id?: string) => useDetail<Village>('villages', id);
+export const useGeography = (id?: string) =>
+  useDetail<GeographyOfInterest>('geographies', id);
