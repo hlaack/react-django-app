@@ -1,8 +1,18 @@
 from rest_framework import serializers
+from django.contrib.auth.models import User
 from .models import (
     Region, GeographyOfInterest, City, Town, Village, PointOfInterest,
     Family, Character, UserNote
 )
+
+# Authentication
+
+class UserSerializer(serializers.ModelSerializer):
+    # Minimal, safe representation of the logged-in user for the frontend.
+    # Never expose password hashes, permissions, or staff flags here.
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email']
 
 # Geography and Locations
 
@@ -31,11 +41,12 @@ class RegionSerializer(serializers.ModelSerializer):
     # will return all the data React needs to plot the map markers!
     cities = CitySerializer(many=True, read_only=True)
     towns = TownSerializer(many=True, read_only=True)
+    villages = VillageSerializer(many=True, read_only=True)
     geographies = GeographyOfInterestSerializer(many=True, read_only=True)
 
     class Meta:
         model = Region
-        fields = ['id', 'name', 'description', 'cities', 'towns', 'geographies']
+        fields = ['id', 'name', 'description', 'cities', 'towns', 'villages', 'geographies']
 
 class PointOfInterestSerializer(serializers.ModelSerializer):
     # Handling the Generic Foreign Key for React:

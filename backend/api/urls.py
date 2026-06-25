@@ -23,7 +23,9 @@ urlpatterns = [
     # Include the router-generated URLs for our API endpoints
     path('', include(router.urls)),
 
+    # Session auth: get a CSRF cookie, then log in / out / check the session.
     path('csrf/', views.get_csrf_token, name='csrf-token'),
+    path('auth/login/', views.LoginView.as_view(), name='login'),
+    path('auth/logout/', views.LogoutView.as_view(), name='logout'),
+    path('auth/me/', views.CurrentUserView.as_view(), name='current-user'),
 ]
-
-#TODO move on to phase 3.
