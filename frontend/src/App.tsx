@@ -21,6 +21,7 @@ import {
   VillageDetail,
   GeographyDetail,
 } from './pages/lore/LocationDetail';
+import { PointOfInterestDetail } from './pages/lore/PointOfInterestDetail';
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
                   <Route path="towns/:id" element={<TownDetail />} />
                   <Route path="villages/:id" element={<VillageDetail />} />
                   <Route path="geographies/:id" element={<GeographyDetail />} />
+                  <Route path="pois/:id" element={<PointOfInterestDetail />} />
                 </Route>
               </Route>
             </Routes>

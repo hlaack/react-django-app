@@ -10,6 +10,7 @@ export interface GeographyOfInterest {
   name: string;
   description: string;
   region: number; // Region id
+  points_of_interest: PointOfInterest[];
 }
 
 export interface City {
@@ -17,6 +18,7 @@ export interface City {
   name: string;
   description: string;
   region: number; // Region id
+  points_of_interest: PointOfInterest[];
 }
 
 export interface Town {
@@ -24,6 +26,7 @@ export interface Town {
   name: string;
   description: string;
   region: number; // Region id
+  points_of_interest: PointOfInterest[];
 }
 
 export interface Village {
@@ -31,6 +34,7 @@ export interface Village {
   name: string;
   description: string;
   region: number; // Region id
+  points_of_interest: PointOfInterest[];
 }
 
 /**
@@ -45,17 +49,20 @@ export interface Region {
   towns: Town[];
   villages: Village[];
   geographies: GeographyOfInterest[];
+  points_of_interest: PointOfInterest[];
 }
 
 /**
- * A point of interest. On the backend it attaches to any location type via a
- * generic foreign key; the serializer flattens that into readable strings.
+ * A point of interest. On the backend it attaches to exactly one location via a
+ * generic foreign key; the serializer flattens that into the parent's type, id,
+ * and display name so the UI can render and link back to it.
  */
 export interface PointOfInterest {
   id: number;
   name: string;
   description: string;
-  location_type: string; // e.g. "city", "town", "region"
+  location_type: string; // model name: "region" | "city" | "town" | "village" | "geographyofinterest"
+  location_id: number;
   location_name: string | null;
 }
 

@@ -7,7 +7,8 @@ import {
   useVillage,
   useGeography,
 } from '../../hooks/useLore';
-import { DetailLoading, DetailError } from './detailCommon';
+import { DetailLoading, DetailError, PoiList } from './detailCommon';
+import type { PointOfInterest } from '../../types';
 
 // City, Town, Village, and Geography all share this shape.
 interface LocationLike {
@@ -15,6 +16,7 @@ interface LocationLike {
   name: string;
   description: string;
   region: number;
+  points_of_interest: PointOfInterest[];
 }
 
 const BASE_TRAIL: Crumb[] = [
@@ -57,12 +59,14 @@ function LocationDetail({
       <h1 className="text-3xl md:text-4xl font-serif font-bold mb-3">{data.name}</h1>
 
       {data.description ? (
-        <p className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap max-w-3xl">
+        <p className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap max-w-3xl mb-8">
           {data.description}
         </p>
       ) : (
-        <p className="text-slate-400 dark:text-slate-500 italic">No description yet.</p>
+        <p className="text-slate-400 dark:text-slate-500 italic mb-8">No description yet.</p>
       )}
+
+      <PoiList items={data.points_of_interest} />
     </article>
   );
 }

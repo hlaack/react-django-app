@@ -8,6 +8,7 @@ import type {
   Town,
   Village,
   GeographyOfInterest,
+  PointOfInterest,
 } from '../types';
 
 // Centralized query keys for list endpoints. DRF returns plain arrays (no
@@ -64,3 +65,15 @@ export const useTown = (id?: string) => useDetail<Town>('towns', id);
 export const useVillage = (id?: string) => useDetail<Village>('villages', id);
 export const useGeography = (id?: string) =>
   useDetail<GeographyOfInterest>('geographies', id);
+export const usePointOfInterest = (id?: string) =>
+  useDetail<PointOfInterest>('pois', id);
+
+// Maps a POI's parent `location_type` (the backend model name) to the frontend
+// route segment, so the UI can link from a POI back to its parent location.
+export const POI_PARENT_RESOURCE: Record<string, string> = {
+  region: 'regions',
+  city: 'cities',
+  town: 'towns',
+  village: 'villages',
+  geographyofinterest: 'geographies',
+};

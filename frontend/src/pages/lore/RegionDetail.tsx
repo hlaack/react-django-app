@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Building2, Home, Tent, Mountain } from 'lucide-react';
 import { Breadcrumb } from '../../components/Breadcrumb';
 import { useRegion } from '../../hooks/useLore';
-import { DetailLoading, DetailError } from './detailCommon';
+import { DetailLoading, DetailError, PoiList } from './detailCommon';
 
 const TRAIL = [
   { label: 'Home', to: '/' },
@@ -58,11 +58,12 @@ export const RegionDetail = () => {
     return <DetailError trail={TRAIL} message="This region could not be found." />;
   }
 
-  const hasLocations =
+  const hasContent =
     region.cities.length +
       region.towns.length +
       region.villages.length +
-      region.geographies.length >
+      region.geographies.length +
+      region.points_of_interest.length >
     0;
 
   return (
@@ -79,7 +80,7 @@ export const RegionDetail = () => {
         <p className="text-slate-400 dark:text-slate-500 italic mb-8">No description yet.</p>
       )}
 
-      {hasLocations ? (
+      {hasContent ? (
         <div className="space-y-6">
           <LocationGroup title="Cities" icon={Building2} resource="cities" items={region.cities} />
           <LocationGroup title="Towns" icon={Home} resource="towns" items={region.towns} />
@@ -90,6 +91,7 @@ export const RegionDetail = () => {
             resource="geographies"
             items={region.geographies}
           />
+          <PoiList items={region.points_of_interest} />
         </div>
       ) : (
         <p className="text-sm text-slate-400 dark:text-slate-500 italic">
