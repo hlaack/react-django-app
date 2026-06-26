@@ -1,3 +1,4 @@
+import { lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 // Import Context
@@ -10,9 +11,15 @@ import { Layout } from './components/Layout';
 
 // Import Pages
 import { HomePage } from './pages/HomePage';
-import { MapView } from './pages/MapView';
-import { FamilyTreeView } from './pages/FamilyTreeView';
 import { LoreArchive } from './pages/LoreArchive';
+
+// The Map and Family Tree pages pull in heavy visualization libraries
+// (SVG layout / React Flow + dagre), so load them on demand to keep the
+// initial bundle small. Suspense lives in Layout around the Outlet.
+const MapView = lazy(() => import('./pages/MapView').then((m) => ({ default: m.MapView })));
+const FamilyTreeView = lazy(() =>
+  import('./pages/FamilyTreeView').then((m) => ({ default: m.FamilyTreeView })),
+);
 import { CharacterDetail } from './pages/lore/CharacterDetail';
 import { RegionDetail } from './pages/lore/RegionDetail';
 import {
