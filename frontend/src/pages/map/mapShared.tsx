@@ -28,6 +28,8 @@ export interface MapMarker {
   type: MarkerType;
   to: string; // route to navigate to on click
   drill: boolean; // true => opens a sub-map; false => a leaf detail page
+  x?: number | null; // fractional (0-1) position on the map; null => auto-placed
+  y?: number | null;
 }
 
 export function truncate(name: string, max = 18) {
@@ -59,29 +61,40 @@ export function CompassRose({ x, y }: { x: number; y: number }) {
   );
 }
 
-/** The SVG shell: sea background, decorative frame, compass, and children. */
-export function MapCanvas({ children, ariaLabel }: { children: React.ReactNode; ariaLabel: string }) {
+/** The SVG shell: sea background, decorative frame, compass, and children.
+ *  vbW/vbH default to the procedural size but can match an image's aspect. */
+export function MapCanvas({
+  children,
+  ariaLabel,
+  vbW = VB_W,
+  vbH = VB_H,
+}: {
+  children: React.ReactNode;
+  ariaLabel: string;
+  vbW?: number;
+  vbH?: number;
+}) {
   return (
     <svg
-      viewBox={`0 0 ${VB_W} ${VB_H}`}
+      viewBox={`0 0 ${vbW} ${vbH}`}
       width="100%"
       preserveAspectRatio="xMidYMid meet"
       className="rounded-lg border border-amber-900/20 dark:border-slate-700"
       role="img"
       aria-label={ariaLabel}
     >
-      <rect x={0} y={0} width={VB_W} height={VB_H} className="fill-[#dbe6ea] dark:fill-slate-950" />
+      <rect x={0} y={0} width={vbW} height={vbH} className="fill-[#dbe6ea] dark:fill-slate-950" />
       <rect
         x={8}
         y={8}
-        width={VB_W - 16}
-        height={VB_H - 16}
+        width={vbW - 16}
+        height={vbH - 16}
         rx={6}
         className="fill-none stroke-amber-800/30 dark:stroke-slate-700"
         strokeWidth={2}
       />
       {children}
-      <CompassRose x={VB_W - 46} y={56} />
+      <CompassRose x={vbW - 46} y={56} />
     </svg>
   );
 }

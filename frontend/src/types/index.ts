@@ -4,8 +4,14 @@
 
 // --- Geography & Locations ---
 
+/** Fractional (0-1) position on the parent's map; null = auto-placed. */
+export interface MapPlaceable {
+  map_x: number | null;
+  map_y: number | null;
+}
+
 /** A named feature attached to a region (mountain range, forest, etc.). */
-export interface GeographyOfInterest {
+export interface GeographyOfInterest extends MapPlaceable {
   id: number;
   name: string;
   description: string;
@@ -13,7 +19,7 @@ export interface GeographyOfInterest {
   points_of_interest: PointOfInterest[];
 }
 
-export interface City {
+export interface City extends MapPlaceable {
   id: number;
   name: string;
   description: string;
@@ -21,7 +27,7 @@ export interface City {
   points_of_interest: PointOfInterest[];
 }
 
-export interface Town {
+export interface Town extends MapPlaceable {
   id: number;
   name: string;
   description: string;
@@ -29,7 +35,7 @@ export interface Town {
   points_of_interest: PointOfInterest[];
 }
 
-export interface Village {
+export interface Village extends MapPlaceable {
   id: number;
   name: string;
   description: string;
@@ -50,6 +56,9 @@ export interface Region {
   villages: Village[];
   geographies: GeographyOfInterest[];
   points_of_interest: PointOfInterest[];
+  map_image: string | null; // relative media URL, or null
+  map_image_width: number | null;
+  map_image_height: number | null;
 }
 
 /**
@@ -57,7 +66,7 @@ export interface Region {
  * generic foreign key; the serializer flattens that into the parent's type, id,
  * and display name so the UI can render and link back to it.
  */
-export interface PointOfInterest {
+export interface PointOfInterest extends MapPlaceable {
   id: number;
   name: string;
   description: string;
