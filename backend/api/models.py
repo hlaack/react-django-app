@@ -112,6 +112,17 @@ class Character(models.Model):
     # A family can have many characters, and a character can be attached to many families.
     families = models.ManyToManyField(Family, related_name='members', blank=True)
 
+    # Descent: a character may have up to two parents and any number of
+    # children. Non-symmetrical self M2M, so `parents` and the reverse
+    # `children` are distinct directions used to build the family tree.
+    parents = models.ManyToManyField(
+        'self',
+        symmetrical=False,
+        related_name='children',
+        blank=True,
+        help_text="This character's parents (the reverse side gives their children).",
+    )
+
     def __str__(self):
         return f"{self.first_name} {self.last_name}".strip()
     

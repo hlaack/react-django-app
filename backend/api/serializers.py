@@ -86,9 +86,13 @@ class CharacterSerializer(serializers.ModelSerializer):
     # This makes building your Navigable Family Trees much easier in React
     families = FamilySerializer(many=True, read_only=True)
 
+    # Parent/child ids so the frontend can build descent edges for the tree.
+    parents = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    children = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+
     class Meta:
         model = Character
-        fields = ['id', 'first_name', 'last_name', 'bio', 'families']
+        fields = ['id', 'first_name', 'last_name', 'bio', 'families', 'parents', 'children']
 
 # User features
 
