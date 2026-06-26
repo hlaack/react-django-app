@@ -9,9 +9,29 @@ POI_PARENT_MODELS = ('region', 'geographyofinterest', 'city', 'town', 'village')
 
 # Geography and Locations
 
+class MapPlaceable(models.Model):
+    """Mixin for an entity that can be pinned on its parent's map by fractional
+    (0-1) coordinates. Null coordinates mean it is auto-placed."""
+    map_x = models.FloatField(null=True, blank=True, help_text="X position on the parent map, 0-1.")
+    map_y = models.FloatField(null=True, blank=True, help_text="Y position on the parent map, 0-1.")
+
+    class Meta:
+        abstract = True
+
+
 class Region(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, help_text="Lore and details about this region.")
+
+    # Uploaded map image for this region; child locations are pinned on it by
+    # their fractional coordinates. Dimensions are auto-filled from the image.
+    map_image = models.ImageField(
+        upload_to='region_maps/', blank=True, null=True,
+        width_field='map_image_width', height_field='map_image_height',
+        help_text="A map image for this region (uploaded via the admin).",
+    )
+    map_image_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    map_image_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
 
     # Reverse access to the POIs attached to this region. Also makes POIs
     # cascade-delete when the region is deleted.
@@ -20,7 +40,7 @@ class Region(models.Model):
     def __str__(self):
         return self.name
 
-class GeographyOfInterest(models.Model):
+class GeographyOfInterest(MapPlaceable):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
@@ -34,7 +54,7 @@ class GeographyOfInterest(models.Model):
     def __str__(self):
         return f"{self.name} ({self.region.name})"
     
-class City(models.Model):
+class City(MapPlaceable):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
@@ -48,7 +68,7 @@ class City(models.Model):
     def __str__(self):
         return self.name
     
-class Town(models.Model):
+class Town(MapPlaceable):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
@@ -59,7 +79,7 @@ class Town(models.Model):
     def __str__(self):
         return self.name
 
-class Village(models.Model):
+class Village(MapPlaceable):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
@@ -70,7 +90,7 @@ class Village(models.Model):
     def __str__(self):
         return self.name
 
-class PointOfInterest(models.Model):
+class PointOfInterest(MapPlaceable):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 

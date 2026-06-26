@@ -8,6 +8,8 @@ __pycache__/
 *.pyo
 backend/core/secret_key.txt
 
+backend/media/
+
 node_modules/
 
 .claude/
