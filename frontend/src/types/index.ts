@@ -82,6 +82,7 @@ export interface Character {
   families: Family[]; // full objects, not just ids
   parents: number[]; // Character ids
   children: number[]; // Character ids
+  spouses: number[]; // Character ids (symmetrical)
 }
 
 // --- Auth & User features ---
