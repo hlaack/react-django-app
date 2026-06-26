@@ -8,11 +8,18 @@ interface LoginCredentials {
   password: string;
 }
 
+interface RegisterCredentials {
+  username: string;
+  password: string;
+  email?: string;
+}
+
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<User>;
+  register: (credentials: RegisterCredentials) => Promise<User>;
   logout: () => Promise<void>;
 }
 
@@ -57,6 +64,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
   });
 
+  const registerMutation = useMutation({
+    mutationFn: async (credentials: RegisterCredentials) => {
+      await ensureCsrfToken();
+      return apiFetch<User>('/auth/register/', { method: 'POST', json: credentials });
+    },
+    onSuccess: (newUser) => {
+      // Registration signs the user in, so seed the cache like login does.
+      queryClient.setQueryData(CURRENT_USER_KEY, newUser);
+    },
+  });
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await apiFetch<void>('/auth/logout/', { method: 'POST' });
@@ -73,6 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: !!user,
     isLoading,
     login: (credentials) => loginMutation.mutateAsync(credentials),
+    register: (credentials) => registerMutation.mutateAsync(credentials),
     logout: () => logoutMutation.mutateAsync(),
   };
 
