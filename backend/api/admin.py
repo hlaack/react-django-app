@@ -57,7 +57,7 @@ class FamilyAdmin(admin.ModelAdmin):
 class CharacterAdmin(admin.ModelAdmin):
     list_display = ('first_name', 'last_name')
     search_fields = ('first_name', 'last_name')
-    filter_horizontal = ('families', 'parents')
+    filter_horizontal = ('families', 'parents', 'spouses')
 
 # User features
 

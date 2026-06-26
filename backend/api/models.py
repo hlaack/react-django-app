@@ -123,6 +123,14 @@ class Character(models.Model):
         help_text="This character's parents (the reverse side gives their children).",
     )
 
+    # Spouses/partners: a symmetrical self M2M, so adding one direction sets
+    # both. Used to draw same-rank partner links on the family tree.
+    spouses = models.ManyToManyField(
+        'self',
+        blank=True,
+        help_text="The character's spouses or partners.",
+    )
+
     def __str__(self):
         return f"{self.first_name} {self.last_name}".strip()
     

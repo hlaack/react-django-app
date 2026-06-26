@@ -89,10 +89,12 @@ class CharacterSerializer(serializers.ModelSerializer):
     # Parent/child ids so the frontend can build descent edges for the tree.
     parents = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     children = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    # Spouse ids for same-rank partner links.
+    spouses = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
     class Meta:
         model = Character
-        fields = ['id', 'first_name', 'last_name', 'bio', 'families', 'parents', 'children']
+        fields = ['id', 'first_name', 'last_name', 'bio', 'families', 'parents', 'children', 'spouses']
 
 # User features
 
