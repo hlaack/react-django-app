@@ -5,7 +5,7 @@ import { ScopeMap } from './ScopeMap';
 import { MapSkeleton, MapErrorBox, type MapMarker } from './mapShared';
 import type { PointOfInterest } from '../../types';
 
-const WORLD: Crumb = { label: 'World Map', to: '/map' };
+const MAP_HOME: Crumb = { label: 'Map', to: '/map' };
 
 // City, Town, Village, and Geography all share this shape.
 interface LocationLike {
@@ -29,14 +29,14 @@ function LocationMapView({
   // Parent region, for the breadcrumb. Disabled until we know its id.
   const region = useRegion(data ? String(data.region) : undefined);
 
-  if (isPending) return <MapSkeleton breadcrumb={[WORLD]} />;
+  if (isPending) return <MapSkeleton breadcrumb={[MAP_HOME]} />;
   if (isError || !data) {
-    return <MapErrorBox breadcrumb={[WORLD]} message={`This ${label.toLowerCase()} could not be found.`} />;
+    return <MapErrorBox breadcrumb={[MAP_HOME]} message={`This ${label.toLowerCase()} could not be found.`} />;
   }
 
-  const breadcrumb: Crumb[] = [WORLD];
+  const breadcrumb: Crumb[] = [MAP_HOME];
   if (region.data) {
-    breadcrumb.push({ label: region.data.name, to: `/map/regions/${region.data.id}` });
+    breadcrumb.push({ label: region.data.name, to: `/lore/regions/${region.data.id}` });
   }
   breadcrumb.push({ label: data.name });
 
