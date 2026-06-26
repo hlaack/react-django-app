@@ -1,5 +1,8 @@
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import viewsets, permissions, status
@@ -110,6 +113,40 @@ class LoginView(APIView):
         # Establishes the session cookie for subsequent authenticated requests.
         login(request, user)
         return Response(UserSerializer(user).data)
+
+
+class RegisterView(APIView):
+    # Anyone may create an account. On success the user is signed in straight
+    # away, so the frontend doesn't need a separate login step.
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        username = (request.data.get('username') or '').strip()
+        password = request.data.get('password') or ''
+        email = (request.data.get('email') or '').strip()
+
+        errors = {}
+        if not username:
+            errors['username'] = ['Username is required.']
+        elif User.objects.filter(username__iexact=username).exists():
+            errors['username'] = ['That username is already taken.']
+
+        if not password:
+            errors['password'] = ['Password is required.']
+        else:
+            # Enforce the project's AUTH_PASSWORD_VALIDATORS. Pass an unsaved
+            # user so the similarity-to-username check can run.
+            try:
+                validate_password(password, user=User(username=username, email=email))
+            except DjangoValidationError as exc:
+                errors['password'] = list(exc.messages)
+
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create_user(username=username, password=password, email=email)
+        login(request, user)
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
 class LogoutView(APIView):
