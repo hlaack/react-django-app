@@ -1,7 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+
+# The location types a Point of Interest may attach to (ContentType.model names).
+# Used to constrain the generic FK so a POI can only belong to one of these.
+POI_PARENT_MODELS = ('region', 'geographyofinterest', 'city', 'town', 'village')
 
 # Geography and Locations
 
@@ -9,15 +13,20 @@ class Region(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, help_text="Lore and details about this region.")
 
+    # Reverse access to the POIs attached to this region. Also makes POIs
+    # cascade-delete when the region is deleted.
+    points_of_interest = GenericRelation('PointOfInterest')
+
     def __str__(self):
         return self.name
-    
+
 class GeographyOfInterest(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
     # A region can have multiple geographies of interest, but a geography of interest belongs to only one region.
     region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name='geographies')
+    points_of_interest = GenericRelation('PointOfInterest')
 
     class Meta:
         verbose_name_plural = "Geographies of Interest"
@@ -31,6 +40,7 @@ class City(models.Model):
 
     # A region can have multiple cities, but a city belongs to only one region.
     region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name='cities')
+    points_of_interest = GenericRelation('PointOfInterest')
 
     class Meta:
         verbose_name_plural = "Cities"
@@ -44,16 +54,18 @@ class Town(models.Model):
 
     # A region can have multiple towns, but a town belongs to only one region.
     region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name='towns')
+    points_of_interest = GenericRelation('PointOfInterest')
 
     def __str__(self):
         return self.name
-    
+
 class Village(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
     # A region can have multiple villages, but a village belongs to only one region.
     region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name='villages')
+    points_of_interest = GenericRelation('PointOfInterest')
 
     def __str__(self):
         return self.name
@@ -62,9 +74,15 @@ class PointOfInterest(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
-    # Generic Foreign Key
-    # Lets POI only belong to one of either a single Region, City, Town, Village, etc.
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    # Generic Foreign Key: a POI belongs to exactly one location, which may be
+    # a Region, Geography, City, Town, or Village. content_type + object_id are
+    # required, so a POI cannot exist without a parent. limit_choices_to keeps
+    # the relation restricted to those location types.
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        limit_choices_to={'model__in': POI_PARENT_MODELS},
+    )
     object_id = models.PositiveIntegerField()
     location_entity = GenericForeignKey('content_type', 'object_id')
 

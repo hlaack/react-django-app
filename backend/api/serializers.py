@@ -16,51 +16,63 @@ class UserSerializer(serializers.ModelSerializer):
 
 # Geography and Locations
 
+# Defined first so the location serializers below can nest it.
+class PointOfInterestSerializer(serializers.ModelSerializer):
+    # Flatten the generic FK for the frontend: a machine-readable parent type
+    # (the model name, e.g. "city") and the parent's id so the UI can link back
+    # to its location, plus a human-readable name for display.
+    location_type = serializers.CharField(source='content_type.model', read_only=True)
+    location_id = serializers.IntegerField(source='object_id', read_only=True)
+    location_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PointOfInterest
+        fields = ['id', 'name', 'description', 'location_type', 'location_id', 'location_name']
+
+    def get_location_name(self, obj):
+        # The __str__ of whatever Region/City/Town/Village/Geography this is on.
+        return str(obj.location_entity) if obj.location_entity else None
+
 class GeographyOfInterestSerializer(serializers.ModelSerializer):
+    points_of_interest = PointOfInterestSerializer(many=True, read_only=True)
+
     class Meta:
         model = GeographyOfInterest
-        fields = ['id', 'name', 'description', 'region']
+        fields = ['id', 'name', 'description', 'region', 'points_of_interest']
 
 class CitySerializer(serializers.ModelSerializer):
+    points_of_interest = PointOfInterestSerializer(many=True, read_only=True)
+
     class Meta:
         model = City
-        fields = ['id', 'name', 'description', 'region']
+        fields = ['id', 'name', 'description', 'region', 'points_of_interest']
 
 class VillageSerializer(serializers.ModelSerializer):
+    points_of_interest = PointOfInterestSerializer(many=True, read_only=True)
+
     class Meta:
         model = Village
-        fields = ['id', 'name', 'description', 'region']
+        fields = ['id', 'name', 'description', 'region', 'points_of_interest']
 
 class TownSerializer(serializers.ModelSerializer):
+    points_of_interest = PointOfInterestSerializer(many=True, read_only=True)
+
     class Meta:
         model = Town
-        fields = ['id', 'name', 'description', 'region']
+        fields = ['id', 'name', 'description', 'region', 'points_of_interest']
 
 class RegionSerializer(serializers.ModelSerializer):
-    # By nesting the serializers here, a single GET request to a Region 
+    # By nesting the serializers here, a single GET request to a Region
     # will return all the data React needs to plot the map markers!
     cities = CitySerializer(many=True, read_only=True)
     towns = TownSerializer(many=True, read_only=True)
     villages = VillageSerializer(many=True, read_only=True)
     geographies = GeographyOfInterestSerializer(many=True, read_only=True)
+    points_of_interest = PointOfInterestSerializer(many=True, read_only=True)
 
     class Meta:
         model = Region
-        fields = ['id', 'name', 'description', 'cities', 'towns', 'villages', 'geographies']
-
-class PointOfInterestSerializer(serializers.ModelSerializer):
-    # Handling the Generic Foreign Key for React:
-    # Instead of sending abstract content_type IDs, we send readable strings
-    location_type = serializers.CharField(source='content_type.name', read_only=True)
-    location_name = serializers.SerializerMethodField()
-
-    class Meta:
-        model = PointOfInterest
-        fields = ['id', 'name', 'description', 'location_type', 'location_name']
-
-    def get_location_name(self, obj):
-        # Returns the string representation of whatever City/Town/Region this is attached to
-        return str(obj.location_entity) if obj.location_entity else None
+        fields = ['id', 'name', 'description', 'cities', 'towns', 'villages', 'geographies', 'points_of_interest']
 
 # Characters and Lore
 
