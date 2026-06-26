@@ -17,6 +17,7 @@ export const loreKeys = {
   regions: ['regions'] as const,
   characters: ['characters'] as const,
   families: ['families'] as const,
+  pois: ['pois'] as const,
 };
 
 // --- List hooks (Lore Archive) ---
@@ -42,6 +43,14 @@ export function useFamilies() {
   return useQuery({
     queryKey: loreKeys.families,
     queryFn: () => apiFetch<Family[]>('/families/'),
+  });
+}
+
+/** All points of interest, each flattened with its parent location info. */
+export function usePointsOfInterest() {
+  return useQuery({
+    queryKey: loreKeys.pois,
+    queryFn: () => apiFetch<PointOfInterest[]>('/pois/'),
   });
 }
 

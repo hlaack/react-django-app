@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Users, BookOpen, AlertCircle } from 'lucide-react';
-import { useCharacters, useRegions } from '../hooks/useLore';
-import type { Character, Region } from '../types';
+import { Users, BookOpen, MapPin, AlertCircle } from 'lucide-react';
+import { useCharacters, useRegions, usePointsOfInterest } from '../hooks/useLore';
+import type { Character, Region, PointOfInterest } from '../types';
 
 // --- Shared presentational helpers ---
 
@@ -95,11 +95,31 @@ function RegionCard({ region }: { region: Region }) {
   );
 }
 
+function PoiCard({ poi }: { poi: PointOfInterest }) {
+  return (
+    <Link to={`/lore/pois/${poi.id}`} className={cardClass}>
+      <h3 className="font-serif font-bold text-lg mb-1">{poi.name}</h3>
+      {poi.location_name && (
+        <p className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 mb-2">
+          <MapPin className="h-3.5 w-3.5" />
+          {poi.location_name}
+        </p>
+      )}
+      {poi.description ? (
+        <p className="text-sm text-slate-600 dark:text-slate-400">{poi.description}</p>
+      ) : (
+        <p className="text-sm text-slate-400 dark:text-slate-500 italic">No description yet.</p>
+      )}
+    </Link>
+  );
+}
+
 // --- Page ---
 
 export const LoreArchive = () => {
   const characters = useCharacters();
   const regions = useRegions();
+  const pois = usePointsOfInterest();
 
   return (
     <div className="animate-in fade-in space-y-12">
@@ -134,6 +154,23 @@ export const LoreArchive = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {regions.data.map((region) => (
               <RegionCard key={region.id} region={region} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <SectionHeading icon={MapPin} title="Points of Interest" />
+        {pois.isPending ? (
+          <LoadingSkeleton />
+        ) : pois.isError ? (
+          <ErrorState message="Could not load points of interest. Is the backend running?" />
+        ) : pois.data.length === 0 ? (
+          <EmptyState message="No points of interest have been recorded yet." />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pois.data.map((poi) => (
+              <PoiCard key={poi.id} poi={poi} />
             ))}
           </div>
         )}
