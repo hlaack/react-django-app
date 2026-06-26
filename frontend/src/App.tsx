@@ -17,6 +17,9 @@ import { LoreArchive } from './pages/LoreArchive';
 // (SVG layout / React Flow + dagre), so load them on demand to keep the
 // initial bundle small. Suspense lives in Layout around the Outlet.
 const MapView = lazy(() => import('./pages/MapView').then((m) => ({ default: m.MapView })));
+const RegionMapView = lazy(() =>
+  import('./pages/map/RegionMapView').then((m) => ({ default: m.RegionMapView })),
+);
 const CityMapView = lazy(() =>
   import('./pages/map/LocationMapView').then((m) => ({ default: m.CityMapView })),
 );
@@ -53,6 +56,7 @@ export default function App() {
                 <Route index element={<HomePage />} />
                 <Route path="map">
                   <Route index element={<MapView />} />
+                  <Route path="regions/:id" element={<RegionMapView />} />
                   <Route path="cities/:id" element={<CityMapView />} />
                   <Route path="towns/:id" element={<TownMapView />} />
                   <Route path="villages/:id" element={<VillageMapView />} />
