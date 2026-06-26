@@ -80,6 +80,8 @@ export interface Character {
   last_name: string;
   bio: string;
   families: Family[]; // full objects, not just ids
+  parents: number[]; // Character ids
+  children: number[]; // Character ids
 }
 
 // --- Auth & User features ---
