@@ -18,33 +18,43 @@ from .serializers import (
     TownSerializer, VillageSerializer, PointOfInterestSerializer,
     FamilySerializer, CharacterSerializer, UserNoteSerializer, UserSerializer
 )
+from .permissions import IsStaffOrReadOnly
 
-# Public Lore and Geography Viewsets
-# Uses ReadOnlyModelViewSet to allow GET requests for all users, but restrict POST/PUT/DELETE to authenticated users only.
+# Lore and Geography Viewsets
+# Full CRUD, but IsStaffOrReadOnly keeps writes to staff while reads stay public.
 
-class RegionViewSet(viewsets.ReadOnlyModelViewSet):
+class RegionViewSet(viewsets.ModelViewSet):
     queryset = Region.objects.all()
     serializer_class = RegionSerializer
+    permission_classes = [IsStaffOrReadOnly]
 
-class GeographyOfInterestViewSet(viewsets.ReadOnlyModelViewSet):
+class GeographyOfInterestViewSet(viewsets.ModelViewSet):
     queryset = GeographyOfInterest.objects.all()
     serializer_class = GeographyOfInterestSerializer
+    permission_classes = [IsStaffOrReadOnly]
 
-class CityViewSet(viewsets.ReadOnlyModelViewSet):
+class CityViewSet(viewsets.ModelViewSet):
     queryset = City.objects.all()
     serializer_class = CitySerializer
+    permission_classes = [IsStaffOrReadOnly]
 
-class TownViewSet(viewsets.ReadOnlyModelViewSet):
+class TownViewSet(viewsets.ModelViewSet):
     queryset = Town.objects.all()
     serializer_class = TownSerializer
+    permission_classes = [IsStaffOrReadOnly]
 
-class VillageViewSet(viewsets.ReadOnlyModelViewSet):
+class VillageViewSet(viewsets.ModelViewSet):
     queryset = Village.objects.all()
     serializer_class = VillageSerializer
+    permission_classes = [IsStaffOrReadOnly]
 
-class PointOfInterestViewSet(viewsets.ReadOnlyModelViewSet):
+class PointOfInterestViewSet(viewsets.ModelViewSet):
     queryset = PointOfInterest.objects.all()
     serializer_class = PointOfInterestSerializer
+    permission_classes = [IsStaffOrReadOnly]
+
+# Characters and families stay read-only for now (staff CRUD comes in a later
+# iteration, once relation editing is designed).
 
 class FamilyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Family.objects.all()

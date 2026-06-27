@@ -1,18 +1,20 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 from .models import (
     Region, GeographyOfInterest, City, Town, Village, PointOfInterest,
-    Family, Character, UserNote
+    Family, Character, UserNote, POI_PARENT_MODELS
 )
 
 # Authentication
 
 class UserSerializer(serializers.ModelSerializer):
     # Minimal, safe representation of the logged-in user for the frontend.
-    # Never expose password hashes, permissions, or staff flags here.
+    # is_staff gates the management UI; never expose password hashes here.
     class Meta:
         model = User
-        fields = ['id', 'username', 'email']
+        fields = ['id', 'username', 'email', 'is_staff']
+        read_only_fields = ['is_staff']
 
 # Geography and Locations
 
@@ -33,14 +35,39 @@ class PointOfInterestSerializer(serializers.ModelSerializer):
     location_type = serializers.CharField(source='content_type.model', read_only=True)
     location_id = serializers.IntegerField(source='object_id', read_only=True)
     location_name = serializers.SerializerMethodField()
+    # Write-only: choose the parent by model name + id (resolved to the
+    # generic FK in create/update).
+    parent_type = serializers.ChoiceField(choices=POI_PARENT_MODELS, write_only=True, required=False)
+    parent_id = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = PointOfInterest
-        fields = ['id', 'name', 'description', 'location_type', 'location_id', 'location_name', 'map_x', 'map_y']
+        fields = ['id', 'name', 'description', 'location_type', 'location_id',
+                  'location_name', 'map_x', 'map_y', 'parent_type', 'parent_id']
 
     def get_location_name(self, obj):
         # The __str__ of whatever Region/City/Town/Village/Geography this is on.
         return str(obj.location_entity) if obj.location_entity else None
+
+    def validate(self, attrs):
+        # A POI cannot exist without a parent, so require one on create.
+        if self.instance is None and ('parent_type' not in attrs or 'parent_id' not in attrs):
+            raise serializers.ValidationError('parent_type and parent_id are required.')
+        return attrs
+
+    def _apply_parent(self, validated_data):
+        parent_type = validated_data.pop('parent_type', None)
+        parent_id = validated_data.pop('parent_id', None)
+        if parent_type is not None and parent_id is not None:
+            validated_data['content_type'] = ContentType.objects.get(app_label='api', model=parent_type)
+            validated_data['object_id'] = parent_id
+        return validated_data
+
+    def create(self, validated_data):
+        return super().create(self._apply_parent(validated_data))
+
+    def update(self, instance, validated_data):
+        return super().update(instance, self._apply_parent(validated_data))
 
 _LOCATION_FIELDS = [
     'id', 'name', 'description', 'region', 'points_of_interest',
