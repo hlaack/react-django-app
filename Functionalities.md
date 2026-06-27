@@ -64,9 +64,20 @@ UserNote
 * A family can have many characters and a character can be attached to multiple families.
 * A user can have many UserNotes, but a UserNote belongs only to one user.
 
-** TODO **
+\*\* TODO \*\*
 
 * Interactive Map
 * Interactive Node-based Family Tree
 * Create admin session with UI that can easily create and append all entity types, including adding points to the interactive map.
 * Refine styling for more grimdark, low-fantasy aesthetic. Have pre-written scripture poem on home page, text overlaid blurred background of distant storm over landscape.
+
+
+
+**Fonts**
+
+
+
+* Libre Caslon Text
+* EB Garamond
+* Cinzel (All caps, maybe "titles")
+
