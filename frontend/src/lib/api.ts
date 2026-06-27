@@ -41,6 +41,9 @@ export class ApiError extends Error {
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   /** Plain object sent as a JSON body. */
   json?: unknown;
+  /** Multipart body (e.g. for file uploads). Content-Type is left unset so the
+   *  browser can add the multipart boundary itself. */
+  form?: FormData;
 }
 
 /**
@@ -48,22 +51,26 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
  * Throws ApiError on any non-2xx response.
  */
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { json, headers, method = 'GET', ...rest } = options;
+  const { json, form, headers, method = 'GET', ...rest } = options;
 
   const finalHeaders = new Headers(headers);
   if (json !== undefined) {
     finalHeaders.set('Content-Type', 'application/json');
   }
+  // Note: never set Content-Type for `form` — the browser supplies the
+  // multipart boundary automatically.
   if (!CSRF_SAFE_METHODS.has(method.toUpperCase())) {
     const csrfToken = getCookie('csrftoken');
     if (csrfToken) finalHeaders.set('X-CSRFToken', csrfToken);
   }
 
+  const body = json !== undefined ? JSON.stringify(json) : form;
+
   const response = await fetch(`${API_BASE}${path}`, {
     method,
     credentials: 'include',
     headers: finalHeaders,
-    body: json !== undefined ? JSON.stringify(json) : undefined,
+    body,
     ...rest,
   });
 

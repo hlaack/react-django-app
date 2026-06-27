@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, MapPin, ShieldAlert } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Pencil, Trash2, MapPin, ShieldAlert, ImageOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ApiError } from '../../lib/api';
 import { useResourceList, useResourceDetail, useResourceMutations } from '../../hooks/useCrud';
@@ -7,7 +7,7 @@ import { CoordinatePicker } from './CoordinatePicker';
 
 // --- Config ---
 
-type FieldType = 'text' | 'textarea' | 'region' | 'poi-parent' | 'multiselect';
+type FieldType = 'text' | 'textarea' | 'region' | 'poi-parent' | 'multiselect' | 'image';
 interface FieldDef {
   name: string;
   label: string;
@@ -43,16 +43,17 @@ const NAME_DESC: FieldDef[] = [
   { name: 'description', label: 'Description', type: 'textarea' },
 ];
 const REGION_FIELD: FieldDef = { name: 'region', label: 'Region', type: 'region' };
+const IMAGE_FIELD: FieldDef = { name: 'map_image', label: 'Map image', type: 'image' };
 
 const characterName = (e: AnyEntity) =>
   `${e.first_name ?? ''} ${e.last_name ?? ''}`.trim() || '(unnamed)';
 
 const CONFIGS: EntityConfig[] = [
-  { resource: 'regions', label: 'Region', labelPlural: 'Regions', placeable: false, fields: NAME_DESC },
-  { resource: 'cities', label: 'City', labelPlural: 'Cities', placeable: true, fields: [...NAME_DESC, REGION_FIELD] },
-  { resource: 'towns', label: 'Town', labelPlural: 'Towns', placeable: true, fields: [...NAME_DESC, REGION_FIELD] },
-  { resource: 'villages', label: 'Village', labelPlural: 'Villages', placeable: true, fields: [...NAME_DESC, REGION_FIELD] },
-  { resource: 'geographies', label: 'Geography', labelPlural: 'Geographies', placeable: true, fields: [...NAME_DESC, REGION_FIELD] },
+  { resource: 'regions', label: 'Region', labelPlural: 'Regions', placeable: false, fields: [...NAME_DESC, IMAGE_FIELD] },
+  { resource: 'cities', label: 'City', labelPlural: 'Cities', placeable: true, fields: [...NAME_DESC, REGION_FIELD, IMAGE_FIELD] },
+  { resource: 'towns', label: 'Town', labelPlural: 'Towns', placeable: true, fields: [...NAME_DESC, REGION_FIELD, IMAGE_FIELD] },
+  { resource: 'villages', label: 'Village', labelPlural: 'Villages', placeable: true, fields: [...NAME_DESC, REGION_FIELD, IMAGE_FIELD] },
+  { resource: 'geographies', label: 'Geography', labelPlural: 'Geographies', placeable: true, fields: [...NAME_DESC, REGION_FIELD, IMAGE_FIELD] },
   {
     resource: 'pois',
     label: 'Point of Interest',
@@ -94,6 +95,7 @@ interface AnyEntity {
   location_name?: string | null;
   map_x?: number | null;
   map_y?: number | null;
+  map_image?: string | null;
   first_name?: string;
   last_name?: string;
 }
@@ -222,6 +224,14 @@ function EntityForm({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Image upload: a freshly chosen file, or a flag to clear an existing one.
+  const imageField = config.fields.find((f) => f.type === 'image');
+  const currentImageUrl = entity?.map_image ?? null;
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const filePreview = useMemo(() => (imageFile ? URL.createObjectURL(imageFile) : null), [imageFile]);
+  useEffect(() => () => { if (filePreview) URL.revokeObjectURL(filePreview); }, [filePreview]);
+
   const regions = useResourceList<AnyEntity>('regions');
   const poiParentResource = POI_PARENT_TYPES.find((t) => t.value === parentType)?.resource ?? 'regions';
   const poiParentInstances = useResourceList<AnyEntity>(poiParentResource);
@@ -264,6 +274,12 @@ function EntityForm({
     if (config.placeable) {
       data.map_x = coords?.x ?? null;
       data.map_y = coords?.y ?? null;
+    }
+    if (imageField) {
+      // A new file uploads (multipart); an explicit clear sends null (JSON);
+      // otherwise leave the field untouched.
+      if (imageFile) data[imageField.name] = imageFile;
+      else if (removeImage) data[imageField.name] = null;
     }
 
     const handlers = { onSuccess: onClose, onError: (err: unknown) => setError(errorMessage(err)) };
@@ -356,6 +372,46 @@ function EntityForm({
                 excludeId={f.resource === config.resource ? entity?.id : undefined}
               />
             );
+          case 'image': {
+            const preview = filePreview ?? (removeImage ? null : currentImageUrl);
+            const hasSomething = !!imageFile || (!removeImage && !!currentImageUrl);
+            return (
+              <div key={f.name}>
+                <label className="block text-sm font-medium mb-1">{f.label}</label>
+                {preview ? (
+                  <img
+                    src={preview}
+                    alt="Map preview"
+                    className="mb-2 max-h-40 rounded-md border border-amber-900/20 dark:border-slate-700 object-contain bg-slate-50 dark:bg-slate-900"
+                  />
+                ) : (
+                  <div className="mb-2 flex items-center gap-2 text-sm text-slate-400 italic">
+                    <ImageOff className="h-4 w-4" /> No image
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => { setImageFile(e.target.files?.[0] ?? null); setRemoveImage(false); }}
+                    className="block text-sm text-slate-600 dark:text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-amber-100 dark:file:bg-amber-900/40 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-amber-800 dark:file:text-amber-300 hover:file:bg-amber-200 dark:hover:file:bg-amber-900/60"
+                  />
+                  {hasSomething && (
+                    <button
+                      type="button"
+                      onClick={() => { setImageFile(null); setRemoveImage(true); }}
+                      className="text-sm text-slate-500 hover:text-red-600"
+                    >
+                      remove
+                    </button>
+                  )}
+                </div>
+                {removeImage && currentImageUrl && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">Image will be removed when you save.</p>
+                )}
+              </div>
+            );
+          }
           default:
             return null;
         }

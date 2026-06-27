@@ -20,6 +20,22 @@ export function useResourceDetail<T>(resource: string, id: number | string | nul
   });
 }
 
+// A payload that contains a File must go out as multipart/form-data; anything
+// else is sent as JSON. Returns the apiFetch options for whichever applies.
+function bodyOptions(data: Record<string, unknown>): { json: unknown } | { form: FormData } {
+  const hasFile = Object.values(data).some((v) => v instanceof File);
+  if (!hasFile) return { json: data };
+
+  const form = new FormData();
+  for (const [key, value] of Object.entries(data)) {
+    if (value === null || value === undefined) continue; // omit; clearing goes via JSON null
+    if (value instanceof File) form.append(key, value);
+    else if (Array.isArray(value)) value.forEach((v) => form.append(key, String(v)));
+    else form.append(key, String(value));
+  }
+  return { form };
+}
+
 export function useResourceMutations(resource: string) {
   const queryClient = useQueryClient();
   const invalidate = () => queryClient.invalidateQueries();
@@ -27,7 +43,7 @@ export function useResourceMutations(resource: string) {
   const create = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
       await ensureCsrfToken();
-      return apiFetch(`/${resource}/`, { method: 'POST', json: data });
+      return apiFetch(`/${resource}/`, { method: 'POST', ...bodyOptions(data) });
     },
     onSuccess: invalidate,
   });
@@ -35,7 +51,7 @@ export function useResourceMutations(resource: string) {
   const update = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Record<string, unknown> }) => {
       await ensureCsrfToken();
-      return apiFetch(`/${resource}/${id}/`, { method: 'PATCH', json: data });
+      return apiFetch(`/${resource}/${id}/`, { method: 'PATCH', ...bodyOptions(data) });
     },
     onSuccess: invalidate,
   });
