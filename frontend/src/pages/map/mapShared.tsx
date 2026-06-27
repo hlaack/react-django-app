@@ -112,31 +112,35 @@ export function MarkerPin({
   onClick: () => void;
 }) {
   const style = TYPE_STYLE[marker.type];
+  // Outer group positions via the transform ATTRIBUTE; the inner group scales
+  // via CSS on hover. Keeping these on separate elements avoids the CSS
+  // transform clobbering the attribute translate (which makes the pin fly off).
   return (
-    <g
-      transform={`translate(${x} ${y})`}
-      className="cursor-pointer transition-transform duration-150 hover:scale-150"
-      style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-      onClick={onClick}
-    >
-      <title>{marker.drill ? `${marker.name} (open map)` : marker.name}</title>
-      {marker.drill && (
-        <circle
-          r={11}
-          className="fill-none stroke-slate-500 dark:stroke-slate-400"
-          strokeWidth={1.5}
-          strokeDasharray="2 3"
-        />
-      )}
-      <circle r={7} className={`${style.fill} stroke-white dark:stroke-slate-900`} strokeWidth={2} />
-      <text
-        y={marker.drill ? 24 : 20}
-        textAnchor="middle"
-        className="fill-slate-700 dark:fill-slate-300 pointer-events-none"
-        fontSize="11"
+    <g transform={`translate(${x} ${y})`}>
+      <g
+        className="cursor-pointer transition-transform duration-150 hover:scale-150"
+        style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+        onClick={onClick}
       >
-        {truncate(marker.name)}
-      </text>
+        <title>{marker.drill ? `${marker.name} (open map)` : marker.name}</title>
+        {marker.drill && (
+          <circle
+            r={11}
+            className="fill-none stroke-slate-500 dark:stroke-slate-400"
+            strokeWidth={1.5}
+            strokeDasharray="2 3"
+          />
+        )}
+        <circle r={7} className={`${style.fill} stroke-white dark:stroke-slate-900`} strokeWidth={2} />
+        <text
+          y={marker.drill ? 24 : 20}
+          textAnchor="middle"
+          className="fill-slate-700 dark:fill-slate-300 pointer-events-none"
+          fontSize="11"
+        >
+          {truncate(marker.name)}
+        </text>
+      </g>
     </g>
   );
 }
