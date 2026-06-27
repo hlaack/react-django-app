@@ -17,6 +17,7 @@ interface RegisterCredentials {
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
+  isStaff: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<User>;
   register: (credentials: RegisterCredentials) => Promise<User>;
@@ -89,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: AuthContextValue = {
     user: user ?? null,
     isAuthenticated: !!user,
+    isStaff: !!user?.is_staff,
     isLoading,
     login: (credentials) => loginMutation.mutateAsync(credentials),
     register: (credentials) => registerMutation.mutateAsync(credentials),

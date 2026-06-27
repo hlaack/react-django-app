@@ -35,6 +35,9 @@ const GeographyMapView = lazy(() =>
 const FamilyTreeView = lazy(() =>
   import('./pages/FamilyTreeView').then((m) => ({ default: m.FamilyTreeView })),
 );
+const ManagePage = lazy(() =>
+  import('./pages/manage/ManagePage').then((m) => ({ default: m.ManagePage })),
+);
 import { CharacterDetail } from './pages/lore/CharacterDetail';
 import { RegionDetail } from './pages/lore/RegionDetail';
 import {
@@ -63,6 +66,7 @@ export default function App() {
                   <Route path="geographies/:id" element={<GeographyMapView />} />
                 </Route>
                 <Route path="families" element={<FamilyTreeView />} />
+                <Route path="manage" element={<ManagePage />} />
                 <Route path="lore">
                   <Route index element={<LoreArchive />} />
                   <Route path="characters/:id" element={<CharacterDetail />} />

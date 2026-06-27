@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Moon, Sun, Map as MapIcon, Users, BookOpen, Menu, X, Home, LogIn, LogOut, UserRound } from 'lucide-react';
+import { Moon, Sun, Map as MapIcon, Users, BookOpen, Menu, X, Home, LogIn, LogOut, UserRound, Shield } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useLoginModal } from '../context/LoginModalContext';
 
 export const Navbar = () => {
     const { theme, toggleTheme } = useTheme();
-    const { user, isAuthenticated, logout } = useAuth();
+    const { user, isAuthenticated, isStaff, logout } = useAuth();
     const { openLogin } = useLoginModal();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const location = useLocation();
@@ -17,6 +17,7 @@ export const Navbar = () => {
         { name: 'Interactive Map', path: '/map', icon: MapIcon },
         { name: 'Family Trees', path: '/families', icon: Users },
         { name: 'Lore Archive', path: '/lore', icon: BookOpen },
+        ...(isStaff ? [{ name: 'Manage', path: '/manage', icon: Shield }] : []),
     ];
 
     return (
