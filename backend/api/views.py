@@ -53,16 +53,19 @@ class PointOfInterestViewSet(viewsets.ModelViewSet):
     serializer_class = PointOfInterestSerializer
     permission_classes = [IsStaffOrReadOnly]
 
-# Characters and families stay read-only for now (staff CRUD comes in a later
-# iteration, once relation editing is designed).
+# Full CRUD for characters and families too; IsStaffOrReadOnly keeps writes
+# staff-only while reads stay public. Relations (families/parents/spouses) are
+# edited through the write-only id fields on CharacterSerializer.
 
-class FamilyViewSet(viewsets.ReadOnlyModelViewSet):
+class FamilyViewSet(viewsets.ModelViewSet):
     queryset = Family.objects.all()
     serializer_class = FamilySerializer
+    permission_classes = [IsStaffOrReadOnly]
 
-class CharacterViewSet(viewsets.ReadOnlyModelViewSet):
+class CharacterViewSet(viewsets.ModelViewSet):
     queryset = Character.objects.all()
     serializer_class = CharacterSerializer
+    permission_classes = [IsStaffOrReadOnly]
 
 # User Features Viewsets
 # Using ModelViewSet to allow full CRUD operations for authenticated users.

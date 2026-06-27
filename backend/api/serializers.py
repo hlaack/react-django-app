@@ -137,9 +137,47 @@ class CharacterSerializer(serializers.ModelSerializer):
     # Spouse ids for same-rank partner links.
     spouses = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
+    # Write-only id lists for editing the M2M relations from the staff UI.
+    # `source` maps each onto its model field so ModelSerializer's create/update
+    # call .set() automatically (Django keeps the symmetrical spouse link and the
+    # reverse children link in sync).
+    family_ids = serializers.PrimaryKeyRelatedField(
+        many=True, write_only=True, required=False,
+        queryset=Family.objects.all(), source='families',
+    )
+    parent_ids = serializers.PrimaryKeyRelatedField(
+        many=True, write_only=True, required=False,
+        queryset=Character.objects.all(), source='parents',
+    )
+    spouse_ids = serializers.PrimaryKeyRelatedField(
+        many=True, write_only=True, required=False,
+        queryset=Character.objects.all(), source='spouses',
+    )
+
     class Meta:
         model = Character
-        fields = ['id', 'first_name', 'last_name', 'bio', 'families', 'parents', 'children', 'spouses']
+        fields = ['id', 'first_name', 'last_name', 'bio',
+                  'families', 'parents', 'children', 'spouses',
+                  'family_ids', 'parent_ids', 'spouse_ids']
+
+    def validate(self, attrs):
+        # Mirror the model's "up to two parents" intent and stop self-references.
+        parents = attrs.get('parents')
+        if parents is not None and len(parents) > 2:
+            raise serializers.ValidationError(
+                {'parent_ids': 'A character can have at most two parents.'}
+            )
+        if self.instance is not None:
+            if parents and self.instance in parents:
+                raise serializers.ValidationError(
+                    {'parent_ids': 'A character cannot be their own parent.'}
+                )
+            spouses = attrs.get('spouses')
+            if spouses and self.instance in spouses:
+                raise serializers.ValidationError(
+                    {'spouse_ids': 'A character cannot be their own spouse.'}
+                )
+        return attrs
 
 # User features
 
