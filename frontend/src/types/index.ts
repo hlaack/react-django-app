@@ -10,8 +10,15 @@ export interface MapPlaceable {
   map_y: number | null;
 }
 
+/** An entity that can carry its own uploaded map image. */
+export interface MapImaged {
+  map_image: string | null; // relative media URL, or null
+  map_image_width: number | null;
+  map_image_height: number | null;
+}
+
 /** A named feature attached to a region (mountain range, forest, etc.). */
-export interface GeographyOfInterest extends MapPlaceable {
+export interface GeographyOfInterest extends MapPlaceable, MapImaged {
   id: number;
   name: string;
   description: string;
@@ -19,7 +26,7 @@ export interface GeographyOfInterest extends MapPlaceable {
   points_of_interest: PointOfInterest[];
 }
 
-export interface City extends MapPlaceable {
+export interface City extends MapPlaceable, MapImaged {
   id: number;
   name: string;
   description: string;
@@ -27,7 +34,7 @@ export interface City extends MapPlaceable {
   points_of_interest: PointOfInterest[];
 }
 
-export interface Town extends MapPlaceable {
+export interface Town extends MapPlaceable, MapImaged {
   id: number;
   name: string;
   description: string;
@@ -35,7 +42,7 @@ export interface Town extends MapPlaceable {
   points_of_interest: PointOfInterest[];
 }
 
-export interface Village extends MapPlaceable {
+export interface Village extends MapPlaceable, MapImaged {
   id: number;
   name: string;
   description: string;
@@ -47,7 +54,7 @@ export interface Village extends MapPlaceable {
  * A region with its child locations nested. A single GET /api/regions/<id>/
  * returns everything needed to plot the map for that region.
  */
-export interface Region {
+export interface Region extends MapImaged {
   id: number;
   name: string;
   description: string;
@@ -56,9 +63,6 @@ export interface Region {
   villages: Village[];
   geographies: GeographyOfInterest[];
   points_of_interest: PointOfInterest[];
-  map_image: string | null; // relative media URL, or null
-  map_image_width: number | null;
-  map_image_height: number | null;
 }
 
 /**

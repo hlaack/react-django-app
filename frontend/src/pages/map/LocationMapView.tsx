@@ -13,6 +13,9 @@ interface LocationLike {
   name: string;
   region: number;
   points_of_interest: PointOfInterest[];
+  map_image: string | null;
+  map_image_width: number | null;
+  map_image_height: number | null;
 }
 
 function LocationMapView({
@@ -46,6 +49,8 @@ function LocationMapView({
     type: 'poi',
     to: `/lore/pois/${p.id}`,
     drill: false,
+    x: p.map_x,
+    y: p.map_y,
   }));
 
   return (
@@ -54,6 +59,9 @@ function LocationMapView({
       title={data.name}
       subtitle={`${label} — its points of interest. Click one to open its page.`}
       markers={markers}
+      backgroundImage={data.map_image}
+      imageWidth={data.map_image_width}
+      imageHeight={data.map_image_height}
     />
   );
 }
