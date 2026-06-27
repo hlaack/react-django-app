@@ -14,6 +14,7 @@ router.register(r'villages', views.VillageViewSet)
 router.register(r'pois', views.PointOfInterestViewSet)
 router.register(r'families', views.FamilyViewSet)
 router.register(r'characters', views.CharacterViewSet)
+router.register(r'users', views.ManagedUserViewSet)
 
 # Need to provide a basename due to override
 

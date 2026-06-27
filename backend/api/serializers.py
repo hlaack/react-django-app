@@ -10,11 +10,22 @@ from .models import (
 
 class UserSerializer(serializers.ModelSerializer):
     # Minimal, safe representation of the logged-in user for the frontend.
-    # is_staff gates the management UI; never expose password hashes here.
+    # is_staff gates the management UI and is_superuser the Users area; never
+    # expose password hashes here.
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'is_staff']
-        read_only_fields = ['is_staff']
+        fields = ['id', 'username', 'email', 'is_staff', 'is_superuser']
+        read_only_fields = ['is_staff', 'is_superuser']
+
+
+class ManagedUserSerializer(serializers.ModelSerializer):
+    # For the superuser-only Users management area. Only is_staff and is_active
+    # are writable here; username/email/is_superuser are read-only (account
+    # creation goes through registration, superuser status through the admin).
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'is_staff', 'is_superuser', 'is_active', 'date_joined']
+        read_only_fields = ['id', 'username', 'email', 'is_superuser', 'date_joined']
 
 # Geography and Locations
 

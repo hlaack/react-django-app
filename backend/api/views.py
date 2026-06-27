@@ -8,6 +8,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.decorators import action
 
 from .models import (
     Region, GeographyOfInterest, City, Town, Village, PointOfInterest,
@@ -16,9 +17,10 @@ from .models import (
 from .serializers import (
     RegionSerializer, GeographyOfInterestSerializer, CitySerializer,
     TownSerializer, VillageSerializer, PointOfInterestSerializer,
-    FamilySerializer, CharacterSerializer, UserNoteSerializer, UserSerializer
+    FamilySerializer, CharacterSerializer, UserNoteSerializer, UserSerializer,
+    ManagedUserSerializer
 )
-from .permissions import IsStaffOrReadOnly
+from .permissions import IsStaffOrReadOnly, IsSuperuser
 
 # Lore and Geography Viewsets
 # Full CRUD, but IsStaffOrReadOnly keeps writes to staff while reads stay public.
@@ -66,6 +68,58 @@ class CharacterViewSet(viewsets.ModelViewSet):
     queryset = Character.objects.all()
     serializer_class = CharacterSerializer
     permission_classes = [IsStaffOrReadOnly]
+
+# User Management (superusers only)
+
+class ManagedUserViewSet(viewsets.ModelViewSet):
+    # Superuser-only account management. Supports listing, toggling is_staff /
+    # is_active, deleting, and resetting passwords. Account creation is not
+    # offered here (registration handles that). Guardrails stop a superuser from
+    # locking themselves out.
+    queryset = User.objects.all().order_by('username')
+    serializer_class = ManagedUserSerializer
+    permission_classes = [IsSuperuser]
+
+    def create(self, request, *args, **kwargs):
+        return Response(
+            {'detail': 'Create accounts through registration, not here.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
+    def update(self, request, *args, **kwargs):
+        # Prevent self-lockout: can't drop your own staff/active flags.
+        if self.get_object() == request.user:
+            if request.data.get('is_active') is False:
+                return Response(
+                    {'detail': "You can't deactivate your own account."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if request.data.get('is_staff') is False:
+                return Response(
+                    {'detail': "You can't revoke your own staff access."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if self.get_object() == request.user:
+            return Response(
+                {'detail': "You can't delete your own account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'])
+    def set_password(self, request, pk=None):
+        target = self.get_object()
+        password = request.data.get('password') or ''
+        try:
+            validate_password(password, user=target)
+        except DjangoValidationError as exc:
+            return Response({'password': list(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        target.set_password(password)
+        target.save(update_fields=['password'])
+        return Response({'detail': 'Password updated.'})
 
 # User Features Viewsets
 # Using ModelViewSet to allow full CRUD operations for authenticated users.
