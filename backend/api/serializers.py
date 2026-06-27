@@ -16,6 +16,15 @@ class UserSerializer(serializers.ModelSerializer):
 
 # Geography and Locations
 
+class MapImageSerializerMixin(serializers.Serializer):
+    # Relative media URL (e.g. /media/maps/city/x.png) so the frontend can load
+    # it same-origin through the Vite /media proxy.
+    map_image = serializers.SerializerMethodField()
+
+    def get_map_image(self, obj):
+        return obj.map_image.url if obj.map_image else None
+
+
 # Defined first so the location serializers below can nest it.
 class PointOfInterestSerializer(serializers.ModelSerializer):
     # Flatten the generic FK for the frontend: a machine-readable parent type
@@ -33,35 +42,40 @@ class PointOfInterestSerializer(serializers.ModelSerializer):
         # The __str__ of whatever Region/City/Town/Village/Geography this is on.
         return str(obj.location_entity) if obj.location_entity else None
 
-class GeographyOfInterestSerializer(serializers.ModelSerializer):
+_LOCATION_FIELDS = [
+    'id', 'name', 'description', 'region', 'points_of_interest',
+    'map_x', 'map_y', 'map_image', 'map_image_width', 'map_image_height',
+]
+
+class GeographyOfInterestSerializer(MapImageSerializerMixin, serializers.ModelSerializer):
     points_of_interest = PointOfInterestSerializer(many=True, read_only=True)
 
     class Meta:
         model = GeographyOfInterest
-        fields = ['id', 'name', 'description', 'region', 'points_of_interest', 'map_x', 'map_y']
+        fields = _LOCATION_FIELDS
 
-class CitySerializer(serializers.ModelSerializer):
+class CitySerializer(MapImageSerializerMixin, serializers.ModelSerializer):
     points_of_interest = PointOfInterestSerializer(many=True, read_only=True)
 
     class Meta:
         model = City
-        fields = ['id', 'name', 'description', 'region', 'points_of_interest', 'map_x', 'map_y']
+        fields = _LOCATION_FIELDS
 
-class VillageSerializer(serializers.ModelSerializer):
+class VillageSerializer(MapImageSerializerMixin, serializers.ModelSerializer):
     points_of_interest = PointOfInterestSerializer(many=True, read_only=True)
 
     class Meta:
         model = Village
-        fields = ['id', 'name', 'description', 'region', 'points_of_interest', 'map_x', 'map_y']
+        fields = _LOCATION_FIELDS
 
-class TownSerializer(serializers.ModelSerializer):
+class TownSerializer(MapImageSerializerMixin, serializers.ModelSerializer):
     points_of_interest = PointOfInterestSerializer(many=True, read_only=True)
 
     class Meta:
         model = Town
-        fields = ['id', 'name', 'description', 'region', 'points_of_interest', 'map_x', 'map_y']
+        fields = _LOCATION_FIELDS
 
-class RegionSerializer(serializers.ModelSerializer):
+class RegionSerializer(MapImageSerializerMixin, serializers.ModelSerializer):
     # By nesting the serializers here, a single GET request to a Region
     # will return all the data React needs to plot the map markers!
     cities = CitySerializer(many=True, read_only=True)
@@ -69,9 +83,6 @@ class RegionSerializer(serializers.ModelSerializer):
     villages = VillageSerializer(many=True, read_only=True)
     geographies = GeographyOfInterestSerializer(many=True, read_only=True)
     points_of_interest = PointOfInterestSerializer(many=True, read_only=True)
-    # Relative media URL (e.g. /media/region_maps/x.png) so the frontend can
-    # load it same-origin through the Vite /media proxy.
-    map_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Region
@@ -80,9 +91,6 @@ class RegionSerializer(serializers.ModelSerializer):
             'geographies', 'points_of_interest',
             'map_image', 'map_image_width', 'map_image_height',
         ]
-
-    def get_map_image(self, obj):
-        return obj.map_image.url if obj.map_image else None
 
 # Characters and Lore
 

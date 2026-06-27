@@ -19,19 +19,29 @@ class MapPlaceable(models.Model):
         abstract = True
 
 
-class Region(models.Model):
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, help_text="Lore and details about this region.")
+def map_image_upload_to(instance, filename):
+    """Organize uploaded map images by model, e.g. maps/region/<file>."""
+    return f"maps/{instance._meta.model_name}/{filename}"
 
-    # Uploaded map image for this region; child locations are pinned on it by
-    # their fractional coordinates. Dimensions are auto-filled from the image.
+
+class MapImageHolder(models.Model):
+    """Mixin for an entity that can have an uploaded map image (with auto-filled
+    dimensions) on which its children are pinned by coordinates."""
     map_image = models.ImageField(
-        upload_to='region_maps/', blank=True, null=True,
+        upload_to=map_image_upload_to, blank=True, null=True,
         width_field='map_image_width', height_field='map_image_height',
-        help_text="A map image for this region (uploaded via the admin).",
+        help_text="A map image for this place (uploaded via the admin).",
     )
     map_image_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
     map_image_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
+
+    class Meta:
+        abstract = True
+
+
+class Region(MapImageHolder):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, help_text="Lore and details about this region.")
 
     # Reverse access to the POIs attached to this region. Also makes POIs
     # cascade-delete when the region is deleted.
@@ -40,7 +50,7 @@ class Region(models.Model):
     def __str__(self):
         return self.name
 
-class GeographyOfInterest(MapPlaceable):
+class GeographyOfInterest(MapImageHolder, MapPlaceable):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
@@ -54,7 +64,7 @@ class GeographyOfInterest(MapPlaceable):
     def __str__(self):
         return f"{self.name} ({self.region.name})"
     
-class City(MapPlaceable):
+class City(MapImageHolder, MapPlaceable):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
@@ -68,7 +78,7 @@ class City(MapPlaceable):
     def __str__(self):
         return self.name
     
-class Town(MapPlaceable):
+class Town(MapImageHolder, MapPlaceable):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
@@ -79,7 +89,7 @@ class Town(MapPlaceable):
     def __str__(self):
         return self.name
 
-class Village(MapPlaceable):
+class Village(MapImageHolder, MapPlaceable):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
