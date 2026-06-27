@@ -18,13 +18,17 @@ class UserSerializer(serializers.ModelSerializer):
 
 # Geography and Locations
 
-class MapImageSerializerMixin(serializers.Serializer):
-    # Relative media URL (e.g. /media/maps/city/x.png) so the frontend can load
-    # it same-origin through the Vite /media proxy.
-    map_image = serializers.SerializerMethodField()
+class RelativeImageField(serializers.ImageField):
+    # Like DRF's ImageField but always serializes to the *relative* media URL
+    # (e.g. /media/maps/city/x.png), never an absolute one, so the frontend can
+    # load it same-origin through the Vite /media proxy. Stays writable, so the
+    # staff page can upload a file (or send null to clear it).
+    def to_representation(self, value):
+        return value.url if value else None
 
-    def get_map_image(self, obj):
-        return obj.map_image.url if obj.map_image else None
+
+class MapImageSerializerMixin(serializers.Serializer):
+    map_image = RelativeImageField(required=False, allow_null=True)
 
 
 # Defined first so the location serializers below can nest it.
