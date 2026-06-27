@@ -105,6 +105,18 @@ export interface User {
   username: string;
   email: string;
   is_staff: boolean;
+  is_superuser: boolean;
+}
+
+/** A user account as seen in the superuser-only management area. */
+export interface ManagedUser {
+  id: number;
+  username: string;
+  email: string;
+  is_staff: boolean;
+  is_superuser: boolean;
+  is_active: boolean;
+  date_joined: string; // ISO 8601
 }
 
 export interface UserNote {

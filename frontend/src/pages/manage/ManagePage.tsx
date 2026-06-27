@@ -3,9 +3,10 @@ import { Routes, Route, Navigate, NavLink, useNavigate, useParams } from 'react-
 import { Plus, Pencil, Trash2, MapPin, ShieldAlert, ImageOff, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { ApiError } from '../../lib/api';
+import { errorMessage } from '../../lib/apiError';
 import { useResourceList, useResourceDetail, useResourceMutations } from '../../hooks/useCrud';
 import { CoordinatePicker } from './CoordinatePicker';
+import { UsersView } from './UsersView';
 
 // --- Config ---
 
@@ -115,23 +116,20 @@ interface ParentImage {
 const inputClass =
   'w-full rounded-md border border-amber-900/20 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm outline-none focus:border-amber-600 dark:focus:border-amber-500 focus:ring-1 focus:ring-amber-600/40';
 
+// Sidebar NavLink styling, shared by the entity tabs and the Users tab.
+const sidebarLinkClass = ({ isActive }: { isActive: boolean }) =>
+  `block w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+    isActive
+      ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
+      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+  }`;
+
 // Human-readable label for an entity in lists and toasts.
 function displayNameOf(config: EntityConfig, item: AnyEntity): string {
   return (config.displayName ? config.displayName(item) : item.name) ?? `#${item.id}`;
 }
 
-// Pull a readable message out of a DRF error response.
-function errorMessage(err: unknown): string {
-  if (err instanceof ApiError && err.data && typeof err.data === 'object') {
-    const parts: string[] = [];
-    for (const [key, value] of Object.entries(err.data as Record<string, unknown>)) {
-      const text = Array.isArray(value) ? value.join(' ') : String(value);
-      parts.push(key === 'non_field_errors' || key === 'detail' ? text : `${key}: ${text}`);
-    }
-    if (parts.length) return parts.join(' · ');
-  }
-  return 'Something went wrong. Please try again.';
-}
+// errorMessage moved to ../../lib/apiError (shared with UsersView).
 
 // Seed the generic field values (text/textarea/multiselect) from an entity.
 function initFieldValues(config: EntityConfig, entity: AnyEntity | null): Record<string, unknown> {
@@ -656,7 +654,7 @@ function ResourceFormView() {
 // --- Page (layout) ---
 
 export const ManagePage = () => {
-  const { isStaff, isLoading } = useAuth();
+  const { isStaff, isSuperuser, isLoading } = useAuth();
 
   if (isLoading) return <div className="py-20 text-center text-slate-400">Loading…</div>;
   if (!isStaff) {
@@ -681,26 +679,25 @@ export const ManagePage = () => {
           <ul className="flex flex-wrap md:flex-col gap-1">
             {CONFIGS.map((c) => (
               <li key={c.resource}>
-                <NavLink
-                  to={`/manage/${c.resource}`}
-                  className={({ isActive }) =>
-                    `block w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`
-                  }
-                >
+                <NavLink to={`/manage/${c.resource}`} className={sidebarLinkClass}>
                   {c.labelPlural}
                 </NavLink>
               </li>
             ))}
+            {isSuperuser && (
+              <li className="md:mt-2 md:pt-2 md:border-t border-amber-900/10 dark:border-slate-800">
+                <NavLink to="/manage/users" className={sidebarLinkClass}>
+                  Users
+                </NavLink>
+              </li>
+            )}
           </ul>
         </aside>
 
         <div className="flex-1 min-w-0">
           <Routes>
             <Route index element={<Navigate to="regions" replace />} />
+            {isSuperuser && <Route path="users" element={<UsersView />} />}
             <Route path=":resource" element={<ResourceListView />} />
             <Route path=":resource/new" element={<ResourceFormView />} />
             <Route path=":resource/:id/edit" element={<ResourceFormView />} />
