@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { LoginModalProvider } from './context/LoginModalContext';
+import { ToastProvider } from './context/ToastContext';
 
 // Import Components
 import { Layout } from './components/Layout';
@@ -51,9 +52,10 @@ import { PointOfInterestDetail } from './pages/lore/PointOfInterestDetail';
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <LoginModalProvider>
-          <Router>
+      <ToastProvider>
+        <AuthProvider>
+          <LoginModalProvider>
+            <Router>
             <Routes>
               <Route path="/" element={<Layout />}>
                 <Route index element={<HomePage />} />
@@ -66,7 +68,7 @@ export default function App() {
                   <Route path="geographies/:id" element={<GeographyMapView />} />
                 </Route>
                 <Route path="families" element={<FamilyTreeView />} />
-                <Route path="manage" element={<ManagePage />} />
+                <Route path="manage/*" element={<ManagePage />} />
                 <Route path="lore">
                   <Route index element={<LoreArchive />} />
                   <Route path="characters/:id" element={<CharacterDetail />} />
@@ -79,9 +81,10 @@ export default function App() {
                 </Route>
               </Route>
             </Routes>
-          </Router>
-        </LoginModalProvider>
-      </AuthProvider>
+            </Router>
+          </LoginModalProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

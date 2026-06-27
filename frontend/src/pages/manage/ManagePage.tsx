@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Pencil, Trash2, MapPin, ShieldAlert, ImageOff } from 'lucide-react';
+import { Routes, Route, Navigate, NavLink, useNavigate, useParams } from 'react-router-dom';
+import { Plus, Pencil, Trash2, MapPin, ShieldAlert, ImageOff, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { ApiError } from '../../lib/api';
 import { useResourceList, useResourceDetail, useResourceMutations } from '../../hooks/useCrud';
 import { CoordinatePicker } from './CoordinatePicker';
@@ -85,6 +87,10 @@ const CONFIGS: EntityConfig[] = [
   },
 ];
 
+const CONFIG_BY_RESOURCE: Record<string, EntityConfig> = Object.fromEntries(
+  CONFIGS.map((c) => [c.resource, c]),
+);
+
 interface AnyEntity {
   id: number;
   name?: string;
@@ -108,6 +114,11 @@ interface ParentImage {
 
 const inputClass =
   'w-full rounded-md border border-amber-900/20 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm outline-none focus:border-amber-600 dark:focus:border-amber-500 focus:ring-1 focus:ring-amber-600/40';
+
+// Human-readable label for an entity in lists and toasts.
+function displayNameOf(config: EntityConfig, item: AnyEntity): string {
+  return (config.displayName ? config.displayName(item) : item.name) ?? `#${item.id}`;
+}
 
 // Pull a readable message out of a DRF error response.
 function errorMessage(err: unknown): string {
@@ -207,6 +218,7 @@ function EntityForm({
   const isPoi = config.resource === 'pois';
   const hasRegion = config.fields.some((f) => f.type === 'region');
 
+  const toast = useToast();
   const { create, update } = useResourceMutations(config.resource);
 
   // Generic scalar/relation field values keyed by field name. Region, POI
@@ -282,7 +294,13 @@ function EntityForm({
       else if (removeImage) data[imageField.name] = null;
     }
 
-    const handlers = { onSuccess: onClose, onError: (err: unknown) => setError(errorMessage(err)) };
+    const handlers = {
+      onSuccess: () => {
+        toast.success(`${config.label} ${isEdit ? 'updated' : 'created'}`);
+        onClose();
+      },
+      onError: (err: unknown) => setError(errorMessage(err)),
+    };
     if (isEdit) update.mutate({ id: entity.id, data }, handlers);
     else create.mutate(data, handlers);
   };
@@ -473,56 +491,172 @@ function EntityForm({
 
 // --- List ---
 
-function EntityList({ config, onEdit }: { config: EntityConfig; onEdit: (e: AnyEntity) => void }) {
+function EntityList({
+  config,
+  search,
+  onEdit,
+}: {
+  config: EntityConfig;
+  search: string;
+  onEdit: (e: AnyEntity) => void;
+}) {
   const list = useResourceList<AnyEntity>(config.resource);
+  const regions = useResourceList<AnyEntity>('regions'); // for resolving region names
   const { remove } = useResourceMutations(config.resource);
+  const toast = useToast();
   const [confirmId, setConfirmId] = useState<number | null>(null);
+
+  const showThumb = config.fields.some((f) => f.type === 'image');
+  const showRegion = config.fields.some((f) => f.type === 'region');
+  const regionName = (id?: number) =>
+    id == null ? null : regions.data?.find((r) => r.id === id)?.name ?? null;
 
   if (list.isPending) return <p className="text-sm text-slate-400">Loading…</p>;
   if (list.isError) return <p className="text-sm text-red-600 dark:text-red-400">Could not load. Is the backend running?</p>;
   if (list.data.length === 0) return <p className="text-sm text-slate-400 italic">None yet.</p>;
 
+  const term = search.trim().toLowerCase();
+  const items = term
+    ? list.data.filter((item) => displayNameOf(config, item).toLowerCase().includes(term))
+    : list.data;
+
+  if (items.length === 0) {
+    return <p className="text-sm text-slate-400 italic">No matches for “{search.trim()}”.</p>;
+  }
+
+  const handleDelete = (item: AnyEntity) =>
+    remove.mutate(item.id, {
+      onSuccess: () => {
+        setConfirmId(null);
+        toast.success(`${config.label} deleted`);
+      },
+      onError: () => toast.error(`Couldn't delete ${displayNameOf(config, item)}.`),
+    });
+
   return (
     <ul className="divide-y divide-amber-900/10 dark:divide-slate-800 border border-amber-900/10 dark:border-slate-800 rounded-lg">
-      {list.data.map((item) => (
-        <li key={item.id} className="flex items-center justify-between gap-2 px-3 py-2">
-          <span className="text-sm">
-            {config.displayName ? config.displayName(item) : item.name}
-            {item.location_name && (
-              <span className="text-slate-400"> — {item.location_name}</span>
-            )}
-            {(item.map_x != null && item.map_y != null) && (
-              <MapPin className="inline h-3 w-3 ml-1.5 text-amber-600" />
-            )}
-          </span>
-          <div className="flex items-center gap-1">
-            <button onClick={() => onEdit(item)} aria-label="Edit" className="p-1.5 rounded text-slate-500 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800">
-              <Pencil className="h-4 w-4" />
-            </button>
-            {confirmId === item.id ? (
-              <>
-                <button onClick={() => remove.mutate(item.id, { onSuccess: () => setConfirmId(null) })} className="text-xs px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white">Delete</button>
-                <button onClick={() => setConfirmId(null)} className="text-xs px-2 py-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</button>
-              </>
-            ) : (
-              <button onClick={() => setConfirmId(item.id)} aria-label="Delete" className="p-1.5 rounded text-slate-500 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-800">
-                <Trash2 className="h-4 w-4" />
+      {items.map((item) => {
+        const region = showRegion ? regionName(item.region) : null;
+        return (
+          <li key={item.id} className="flex items-center justify-between gap-2 px-3 py-2">
+            <div className="flex items-center gap-3 min-w-0">
+              {showThumb &&
+                (item.map_image ? (
+                  <img
+                    src={item.map_image}
+                    alt=""
+                    className="h-8 w-12 rounded object-cover border border-amber-900/15 dark:border-slate-700 shrink-0"
+                  />
+                ) : (
+                  <div className="h-8 w-12 rounded border border-dashed border-amber-900/20 dark:border-slate-700 flex items-center justify-center text-slate-300 dark:text-slate-600 shrink-0">
+                    <ImageOff className="h-3.5 w-3.5" />
+                  </div>
+                ))}
+              <span className="text-sm truncate">
+                {displayNameOf(config, item)}
+                {region && <span className="text-slate-400"> — {region}</span>}
+                {item.location_name && <span className="text-slate-400"> — {item.location_name}</span>}
+                {item.map_x != null && item.map_y != null && (
+                  <MapPin className="inline h-3 w-3 ml-1.5 text-amber-600" />
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={() => onEdit(item)} aria-label="Edit" className="p-1.5 rounded text-slate-500 hover:text-amber-700 dark:hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <Pencil className="h-4 w-4" />
               </button>
-            )}
-          </div>
-        </li>
-      ))}
+              {confirmId === item.id ? (
+                <>
+                  <button onClick={() => handleDelete(item)} className="text-xs px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white">Delete</button>
+                  <button onClick={() => setConfirmId(null)} className="text-xs px-2 py-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</button>
+                </>
+              ) : (
+                <button onClick={() => setConfirmId(item.id)} aria-label="Delete" className="p-1.5 rounded text-slate-500 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
-// --- Page ---
+// --- Routed views ---
+
+function ResourceListView() {
+  const { resource } = useParams();
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+
+  // Clear the search box when switching entity types (this element is reused
+  // across :resource changes, so its state would otherwise persist).
+  useEffect(() => setSearch(''), [resource]);
+
+  const config = resource ? CONFIG_BY_RESOURCE[resource] : undefined;
+  if (!config) return <Navigate to="/manage" replace />;
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h2 className="text-xl font-serif font-bold">{config.labelPlural}</h2>
+        <button
+          onClick={() => navigate(`/manage/${config.resource}/new`)}
+          className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md bg-amber-700 hover:bg-amber-800 text-white font-medium transition-colors shrink-0"
+        >
+          <Plus className="h-4 w-4" /> New {config.label}
+        </button>
+      </div>
+      <div className="relative mb-3">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={`Search ${config.labelPlural.toLowerCase()}…`}
+          className={`${inputClass} pl-9`}
+        />
+      </div>
+      <EntityList
+        config={config}
+        search={search}
+        onEdit={(item) => navigate(`/manage/${config.resource}/${item.id}/edit`)}
+      />
+    </>
+  );
+}
+
+function ResourceFormView() {
+  const { resource, id } = useParams();
+  const navigate = useNavigate();
+  const config = resource ? CONFIG_BY_RESOURCE[resource] : undefined;
+  // Edit fetches the entity by id; create (no id) leaves the query disabled.
+  const detail = useResourceDetail<AnyEntity>(resource ?? '', id);
+
+  if (!config) return <Navigate to="/manage" replace />;
+  const back = () => navigate(`/manage/${config.resource}`);
+
+  if (id) {
+    if (detail.isPending) return <p className="text-sm text-slate-400">Loading…</p>;
+    if (detail.isError || !detail.data) {
+      return <p className="text-sm text-red-600 dark:text-red-400">Could not load this {config.label.toLowerCase()}.</p>;
+    }
+  }
+
+  return (
+    <EntityForm
+      key={`${resource}:${id ?? 'new'}`}
+      config={config}
+      entity={id ? detail.data ?? null : null}
+      onClose={back}
+    />
+  );
+}
+
+// --- Page (layout) ---
 
 export const ManagePage = () => {
   const { isStaff, isLoading } = useAuth();
-  const [configIdx, setConfigIdx] = useState(0);
-  const [editing, setEditing] = useState<AnyEntity | 'new' | null>(null);
-  const config = CONFIGS[configIdx];
 
   if (isLoading) return <div className="py-20 text-center text-slate-400">Loading…</div>;
   if (!isStaff) {
@@ -545,40 +679,32 @@ export const ManagePage = () => {
       <div className="flex flex-col md:flex-row gap-6">
         <aside className="md:w-48 shrink-0">
           <ul className="flex flex-wrap md:flex-col gap-1">
-            {CONFIGS.map((c, i) => (
+            {CONFIGS.map((c) => (
               <li key={c.resource}>
-                <button
-                  onClick={() => { setConfigIdx(i); setEditing(null); }}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    i === configIdx
-                      ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
+                <NavLink
+                  to={`/manage/${c.resource}`}
+                  className={({ isActive }) =>
+                    `block w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`
+                  }
                 >
                   {c.labelPlural}
-                </button>
+                </NavLink>
               </li>
             ))}
           </ul>
         </aside>
 
         <div className="flex-1 min-w-0">
-          {editing ? (
-            <EntityForm config={config} entity={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xl font-serif font-bold">{config.labelPlural}</h2>
-                <button
-                  onClick={() => setEditing('new')}
-                  className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md bg-amber-700 hover:bg-amber-800 text-white font-medium transition-colors"
-                >
-                  <Plus className="h-4 w-4" /> New {config.label}
-                </button>
-              </div>
-              <EntityList config={config} onEdit={(e) => setEditing(e)} />
-            </>
-          )}
+          <Routes>
+            <Route index element={<Navigate to="regions" replace />} />
+            <Route path=":resource" element={<ResourceListView />} />
+            <Route path=":resource/new" element={<ResourceFormView />} />
+            <Route path=":resource/:id/edit" element={<ResourceFormView />} />
+          </Routes>
         </div>
       </div>
     </div>
