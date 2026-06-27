@@ -7,11 +7,18 @@ import { CoordinatePicker } from './CoordinatePicker';
 
 // --- Config ---
 
-type FieldType = 'text' | 'textarea' | 'region' | 'poi-parent';
+type FieldType = 'text' | 'textarea' | 'region' | 'poi-parent' | 'multiselect';
 interface FieldDef {
   name: string;
   label: string;
   type: FieldType;
+  required?: boolean;
+  hint?: string;
+  // For 'multiselect': which resource to pick from, the write-only payload key
+  // the backend expects, and how to label each option.
+  resource?: string;
+  payloadKey?: string;
+  optionLabel?: (e: AnyEntity) => string;
 }
 interface EntityConfig {
   resource: string;
@@ -19,6 +26,8 @@ interface EntityConfig {
   labelPlural: string;
   placeable: boolean;
   fields: FieldDef[];
+  // Locations/POIs use `name`; characters need a composed display name.
+  displayName?: (e: AnyEntity) => string;
 }
 
 const POI_PARENT_TYPES = [
@@ -30,10 +39,13 @@ const POI_PARENT_TYPES = [
 ];
 
 const NAME_DESC: FieldDef[] = [
-  { name: 'name', label: 'Name', type: 'text' },
+  { name: 'name', label: 'Name', type: 'text', required: true },
   { name: 'description', label: 'Description', type: 'textarea' },
 ];
 const REGION_FIELD: FieldDef = { name: 'region', label: 'Region', type: 'region' };
+
+const characterName = (e: AnyEntity) =>
+  `${e.first_name ?? ''} ${e.last_name ?? ''}`.trim() || '(unnamed)';
 
 const CONFIGS: EntityConfig[] = [
   { resource: 'regions', label: 'Region', labelPlural: 'Regions', placeable: false, fields: NAME_DESC },
@@ -48,11 +60,33 @@ const CONFIGS: EntityConfig[] = [
     placeable: true,
     fields: [...NAME_DESC, { name: 'parent', label: 'Attached to', type: 'poi-parent' }],
   },
+  { resource: 'families', label: 'Family', labelPlural: 'Families', placeable: false, fields: NAME_DESC },
+  {
+    resource: 'characters',
+    label: 'Character',
+    labelPlural: 'Characters',
+    placeable: false,
+    displayName: characterName,
+    fields: [
+      { name: 'first_name', label: 'First name', type: 'text', required: true },
+      { name: 'last_name', label: 'Last name', type: 'text' },
+      { name: 'bio', label: 'Biography', type: 'textarea' },
+      { name: 'families', label: 'Families', type: 'multiselect', resource: 'families', payloadKey: 'family_ids' },
+      {
+        name: 'parents', label: 'Parents', type: 'multiselect', resource: 'characters',
+        payloadKey: 'parent_ids', hint: '(up to two)', optionLabel: characterName,
+      },
+      {
+        name: 'spouses', label: 'Spouses / partners', type: 'multiselect', resource: 'characters',
+        payloadKey: 'spouse_ids', optionLabel: characterName,
+      },
+    ],
+  },
 ];
 
 interface AnyEntity {
   id: number;
-  name: string;
+  name?: string;
   description?: string;
   region?: number;
   location_type?: string;
@@ -60,6 +94,8 @@ interface AnyEntity {
   location_name?: string | null;
   map_x?: number | null;
   map_y?: number | null;
+  first_name?: string;
+  last_name?: string;
 }
 
 interface ParentImage {
@@ -84,6 +120,76 @@ function errorMessage(err: unknown): string {
   return 'Something went wrong. Please try again.';
 }
 
+// Seed the generic field values (text/textarea/multiselect) from an entity.
+function initFieldValues(config: EntityConfig, entity: AnyEntity | null): Record<string, unknown> {
+  const e = entity as Record<string, unknown> | null;
+  const values: Record<string, unknown> = {};
+  for (const f of config.fields) {
+    if (f.type === 'text' || f.type === 'textarea') {
+      values[f.name] = (e?.[f.name] as string | undefined) ?? '';
+    } else if (f.type === 'multiselect') {
+      const raw = e?.[f.name];
+      // Families come back as full objects; parents/spouses as bare ids.
+      values[f.name] = Array.isArray(raw)
+        ? raw.map((x) => (x && typeof x === 'object' ? (x as { id: number }).id : (x as number)))
+        : [];
+    }
+  }
+  return values;
+}
+
+// --- Relation multi-select ---
+
+function MultiSelectField({
+  field,
+  value,
+  onChange,
+  excludeId,
+}: {
+  field: FieldDef;
+  value: number[];
+  onChange: (next: number[]) => void;
+  excludeId?: number;
+}) {
+  const list = useResourceList<AnyEntity>(field.resource!);
+  const optionLabel = field.optionLabel ?? ((e: AnyEntity) => e.name ?? `#${e.id}`);
+  const options = (list.data ?? []).filter((o) => o.id !== excludeId);
+
+  const toggle = (id: number) =>
+    onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-1">
+        {field.label}
+        {field.hint && <span className="text-slate-400 font-normal"> {field.hint}</span>}
+      </label>
+      {list.isPending ? (
+        <p className="text-sm text-slate-400">Loading…</p>
+      ) : options.length === 0 ? (
+        <p className="text-sm text-slate-400 italic">None available.</p>
+      ) : (
+        <div className="max-h-44 overflow-y-auto rounded-md border border-amber-900/20 dark:border-slate-700 divide-y divide-amber-900/5 dark:divide-slate-800">
+          {options.map((o) => (
+            <label
+              key={o.id}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-amber-50 dark:hover:bg-slate-800/60"
+            >
+              <input
+                type="checkbox"
+                checked={value.includes(o.id)}
+                onChange={() => toggle(o.id)}
+                className="accent-amber-700"
+              />
+              {optionLabel(o)}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Create/edit form ---
 
 function EntityForm({
@@ -101,8 +207,12 @@ function EntityForm({
 
   const { create, update } = useResourceMutations(config.resource);
 
-  const [name, setName] = useState(entity?.name ?? '');
-  const [description, setDescription] = useState(entity?.description ?? '');
+  // Generic scalar/relation field values keyed by field name. Region, POI
+  // parent, and the map coordinate live in their own state below because they
+  // drive the coordinate picker.
+  const [values, setValues] = useState<Record<string, unknown>>(() => initFieldValues(config, entity));
+  const setValue = (name: string, value: unknown) => setValues((v) => ({ ...v, [name]: value }));
+
   const [regionId, setRegionId] = useState(entity?.region != null ? String(entity.region) : '');
   const [parentType, setParentType] = useState(entity?.location_type ?? 'region');
   const [parentId, setParentId] = useState(entity?.location_id != null ? String(entity.location_id) : '');
@@ -113,15 +223,14 @@ function EntityForm({
   const [error, setError] = useState<string | null>(null);
 
   const regions = useResourceList<AnyEntity>('regions');
-  const parentResource = isPoi
-    ? POI_PARENT_TYPES.find((t) => t.value === parentType)?.resource ?? 'regions'
-    : 'regions';
-  const parentInstances = useResourceList<AnyEntity>(parentResource);
+  const poiParentResource = POI_PARENT_TYPES.find((t) => t.value === parentType)?.resource ?? 'regions';
+  const poiParentInstances = useResourceList<AnyEntity>(poiParentResource);
 
   // The parent whose map image the picker uses.
+  const mapParentResource = isPoi ? poiParentResource : 'regions';
   const mapParentId = isPoi ? parentId : regionId;
   const parentImage = useResourceDetail<ParentImage>(
-    parentResource,
+    mapParentResource,
     config.placeable ? mapParentId : undefined,
   );
 
@@ -130,9 +239,19 @@ function EntityForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!name.trim()) return setError('Name is required.');
 
-    const data: Record<string, unknown> = { name: name.trim(), description };
+    const data: Record<string, unknown> = {};
+    for (const f of config.fields) {
+      if (f.type === 'text') {
+        const text = String(values[f.name] ?? '').trim();
+        if (f.required && !text) return setError(`${f.label} is required.`);
+        data[f.name] = text;
+      } else if (f.type === 'textarea') {
+        data[f.name] = values[f.name] ?? '';
+      } else if (f.type === 'multiselect') {
+        data[f.payloadKey ?? f.name] = values[f.name] ?? [];
+      }
+    }
     if (hasRegion) {
       if (!regionId) return setError('Please choose a region.');
       data.region = Number(regionId);
@@ -164,53 +283,83 @@ function EntityForm({
         </p>
       )}
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Name</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-1">Description</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className={`${inputClass} resize-y`} />
-      </div>
-
-      {hasRegion && (
-        <div>
-          <label className="block text-sm font-medium mb-1">Region</label>
-          <select value={regionId} onChange={(e) => setRegionId(e.target.value)} className={inputClass}>
-            <option value="">— choose a region —</option>
-            {regions.data?.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {isPoi && (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Attached to</label>
-            <select
-              value={parentType}
-              onChange={(e) => { setParentType(e.target.value); setParentId(''); }}
-              className={inputClass}
-            >
-              {POI_PARENT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Which one</label>
-            <select value={parentId} onChange={(e) => setParentId(e.target.value)} className={inputClass}>
-              <option value="">— choose —</option>
-              {parentInstances.data?.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
+      {config.fields.map((f) => {
+        switch (f.type) {
+          case 'text':
+            return (
+              <div key={f.name}>
+                <label className="block text-sm font-medium mb-1">{f.label}</label>
+                <input
+                  value={String(values[f.name] ?? '')}
+                  onChange={(e) => setValue(f.name, e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            );
+          case 'textarea':
+            return (
+              <div key={f.name}>
+                <label className="block text-sm font-medium mb-1">{f.label}</label>
+                <textarea
+                  value={String(values[f.name] ?? '')}
+                  onChange={(e) => setValue(f.name, e.target.value)}
+                  rows={3}
+                  className={`${inputClass} resize-y`}
+                />
+              </div>
+            );
+          case 'region':
+            return (
+              <div key={f.name}>
+                <label className="block text-sm font-medium mb-1">Region</label>
+                <select value={regionId} onChange={(e) => setRegionId(e.target.value)} className={inputClass}>
+                  <option value="">— choose a region —</option>
+                  {regions.data?.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          case 'poi-parent':
+            return (
+              <div key={f.name} className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Attached to</label>
+                  <select
+                    value={parentType}
+                    onChange={(e) => { setParentType(e.target.value); setParentId(''); }}
+                    className={inputClass}
+                  >
+                    {POI_PARENT_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Which one</label>
+                  <select value={parentId} onChange={(e) => setParentId(e.target.value)} className={inputClass}>
+                    <option value="">— choose —</option>
+                    {poiParentInstances.data?.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            );
+          case 'multiselect':
+            return (
+              <MultiSelectField
+                key={f.name}
+                field={f}
+                value={(values[f.name] as number[]) ?? []}
+                onChange={(next) => setValue(f.name, next)}
+                excludeId={f.resource === config.resource ? entity?.id : undefined}
+              />
+            );
+          default:
+            return null;
+        }
+      })}
 
       {config.placeable && (
         <div>
@@ -282,7 +431,7 @@ function EntityList({ config, onEdit }: { config: EntityConfig; onEdit: (e: AnyE
       {list.data.map((item) => (
         <li key={item.id} className="flex items-center justify-between gap-2 px-3 py-2">
           <span className="text-sm">
-            {item.name}
+            {config.displayName ? config.displayName(item) : item.name}
             {item.location_name && (
               <span className="text-slate-400"> — {item.location_name}</span>
             )}
